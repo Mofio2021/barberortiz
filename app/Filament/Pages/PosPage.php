@@ -1,0 +1,242 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use Filament\Pages\Page;
+use App\Models\{Branch, Staff, Service, Product, Customer, Sale, SaleItem};
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
+
+class PosPage extends Page
+{
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static string $view = 'filament.pages.pos-page';
+    protected static ?string $navigationLabel = 'Punto de Venta (POS)';
+    protected static ?string $title = 'Punto de Venta';
+    protected static ?string $slug = 'pos';
+    protected static ?int $navigationSort = 1;
+
+    public ?int $selectedBranchId = null;
+    public ?int $selectedStaffId = null;
+    public array $cartItems = [];
+    public string $customerPhone = '';
+    public string $customerName = 'Cliente General';
+    public ?int $customerId = null;
+    public string $paymentMethod = 'cash';
+    public float $amountPaid = 0;
+    public float $discount = 0;
+    public string $notes = '';
+    public string $searchTerm = '';
+    public string $activeTab = 'services'; // services | products
+
+    public float $subtotal = 0;
+    public float $total = 0;
+    public float $change = 0;
+    public float $totalCommission = 0;
+
+    public function mount(): void
+    {
+        // Si solo hay una sucursal, preseleccionarla
+        $branches = Branch::where('is_active', true)->get();
+        if ($branches->count() === 1) {
+            $this->selectedBranchId = $branches->first()->id;
+        }
+        // Si el usuario es barbero, preseleccionar su staff
+        $user = auth()->user();
+        if ($user && $user->role === 'barbero') {
+            $staff = Staff::where('user_id', $user->id)->first();
+            if ($staff) {
+                $this->selectedStaffId = $staff->id;
+                $this->selectedBranchId = $staff->branch_id;
+            }
+        }
+    }
+
+    public function getBranches() { return Branch::where('is_active', true)->get(); }
+    public function getStaffList() {
+        if (!$this->selectedBranchId) return collect();
+        return Staff::where('branch_id', $this->selectedBranchId)->where('status', 'active')->get();
+    }
+    public function getServices() {
+        return Service::where('is_active', true)
+            ->when($this->searchTerm, fn($q) => $q->where('name', 'like', "%{$this->searchTerm}%"))
+            ->get();
+    }
+    public function getProducts() {
+        return Product::where('is_active', true)->where('stock', '>', 0)
+            ->when($this->searchTerm, fn($q) => $q->where('name', 'like', "%{$this->searchTerm}%"))
+            ->get();
+    }
+
+    public function addService(int $serviceId): void
+    {
+        if (!$this->selectedStaffId) {
+            Notification::make()->title('Selecciona un barbero primero')->warning()->send();
+            return;
+        }
+        $service = Service::find($serviceId);
+        if (!$service) return;
+        $staff = Staff::find($this->selectedStaffId);
+        $commission = $staff->calculateCommission($service->price);
+        $key = "service_{$serviceId}";
+        if (isset($this->cartItems[$key])) {
+            $this->cartItems[$key]['quantity']++;
+            $this->cartItems[$key]['commission'] += $commission;
+        } else {
+            $this->cartItems[$key] = [
+                'key' => $key, 'type' => 'service', 'id' => $serviceId,
+                'name' => $service->name, 'price' => $service->price,
+                'quantity' => 1, 'commission' => $commission,
+            ];
+        }
+        $this->recalculate();
+    }
+
+    public function addProduct(int $productId): void
+    {
+        if (!$this->selectedStaffId) {
+            Notification::make()->title('Selecciona un barbero primero')->warning()->send();
+            return;
+        }
+        $product = Product::find($productId);
+        if (!$product) return;
+        $key = "product_{$productId}";
+        $currentQty = isset($this->cartItems[$key]) ? $this->cartItems[$key]['quantity'] : 0;
+        if ($currentQty >= $product->stock) {
+            Notification::make()->title("Sin stock: {$product->name}")->danger()->send();
+            return;
+        }
+        $commission = $product->calculateCommission();
+        if (isset($this->cartItems[$key])) {
+            $this->cartItems[$key]['quantity']++;
+            $this->cartItems[$key]['commission'] += $commission;
+        } else {
+            $this->cartItems[$key] = [
+                'key' => $key, 'type' => 'product', 'id' => $productId,
+                'name' => $product->name, 'price' => $product->price,
+                'quantity' => 1, 'commission' => $commission,
+            ];
+        }
+        $this->recalculate();
+    }
+
+    public function removeItem(string $key): void
+    {
+        unset($this->cartItems[$key]);
+        $this->recalculate();
+    }
+
+    public function recalculate(): void
+    {
+        $this->subtotal = collect($this->cartItems)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $this->total = max(0, $this->subtotal - $this->discount);
+        $this->totalCommission = collect($this->cartItems)->sum(fn($i) => $i['commission']);
+        $this->change = max(0, $this->amountPaid - $this->total);
+    }
+
+    public function lookupCustomer(): void
+    {
+        if (strlen($this->customerPhone) < 6) return;
+        $customer = Customer::where('phone', $this->customerPhone)->first();
+        if ($customer) {
+            $this->customerName = $customer->name;
+            $this->customerId = $customer->id;
+            Notification::make()->title("Cliente: {$customer->name}")->body("Visitas: {$customer->total_visits}")->success()->send();
+        }
+    }
+
+    public function processSale(): void
+    {
+        if (empty($this->cartItems)) {
+            Notification::make()->title('El carrito está vacío')->warning()->send();
+            return;
+        }
+        if (!$this->selectedStaffId || !$this->selectedBranchId) {
+            Notification::make()->title('Selecciona sucursal y barbero')->warning()->send();
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            // Cliente
+            $customer = null;
+            if ($this->customerPhone) {
+                $customer = Customer::firstOrCreate(
+                    ['phone' => $this->customerPhone],
+                    ['name' => $this->customerName ?: 'Cliente General', 'branch_id' => $this->selectedBranchId]
+                );
+                $customer->increment('total_visits');
+                $customer->update(['last_visit' => now()]);
+            }
+
+            $sale = Sale::create([
+                'branch_id' => $this->selectedBranchId,
+                'customer_id' => $customer?->id,
+                'staff_id' => $this->selectedStaffId,
+                'cashier_id' => auth()->id(),
+                'subtotal' => $this->subtotal,
+                'discount' => $this->discount,
+                'total' => $this->total,
+                'total_commission' => $this->totalCommission,
+                'payment_method' => $this->paymentMethod,
+                'amount_paid' => $this->amountPaid ?: $this->total,
+                'change_given' => $this->change,
+                'notes' => $this->notes,
+            ]);
+
+            foreach ($this->cartItems as $item) {
+                SaleItem::create([
+                    'sale_id' => $sale->id,
+                    'staff_id' => $this->selectedStaffId,
+                    'item_type' => $item['type'],
+                    'item_id' => $item['id'],
+                    'item_name' => $item['name'],
+                    'price_at_time' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'commission_amount' => $item['commission'],
+                ]);
+                // Descontar stock si es producto
+                if ($item['type'] === 'product') {
+                    Product::find($item['id'])->decrement('stock', $item['quantity']);
+                }
+            }
+
+            DB::commit();
+            Notification::make()
+                ->title('✓ Venta registrada')
+                ->body("Total: Bs " . number_format($this->total, 2) . " | Cambio: Bs " . number_format($this->change, 2))
+                ->success()->send();
+            $this->resetCart();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
+        }
+    }
+
+    public function resetCart(): void
+    {
+        $this->cartItems = [];
+        $this->customerPhone = '';
+        $this->customerName = 'Cliente General';
+        $this->customerId = null;
+        $this->paymentMethod = 'cash';
+        $this->amountPaid = 0;
+        $this->discount = 0;
+        $this->notes = '';
+        $this->subtotal = 0;
+        $this->total = 0;
+        $this->change = 0;
+        $this->totalCommission = 0;
+        $this->searchTerm = '';
+    }
+
+    public function updatedAmountPaid(): void { $this->recalculate(); }
+    public function updatedDiscount(): void { $this->recalculate(); }
+
+    public static function canAccess(): bool
+    {
+        $role = auth()->user()?->role;
+        return in_array($role, ['super_admin', 'admin_sucursal', 'cajero', 'barbero']);
+    }
+}
