@@ -1,0 +1,58 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Upload via FTP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2          # FTP-Deploy-Action necesita historial para diff incremental
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, pdo, pdo_mysql
+
+      - name: Install Composer dependencies (sin dev)
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Build assets (Vite)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server:           ${{ secrets.FTP_HOST }}
+          username:         ${{ secrets.FTP_USER }}
+          password:         ${{ secrets.FTP_PASSWORD }}
+          server-dir:       ${{ secrets.SERVER_PATH }}
+          protocol:         ftp
+          port:             21
+          # Solo sube archivos que cambiaron desde el commit anterior
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/storage/framework/cache/**
+            **/storage/framework/sessions/**
+            **/storage/framework/views/**
+            **/storage/logs/**
+            **/.env
+            **/.env.*
+            **/tests/**
+            **/phpunit.xml*
+            **/.phpunit*
+            **/README*
+            **/*.md
