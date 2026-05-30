@@ -126,6 +126,19 @@ class StaffResource extends Resource
                         ->required(fn (string $operation): bool => $operation === 'create')
                         ->minLength(8)
                         ->helperText('Edición: deja en blanco para no cambiarla.'),
+
+                    Forms\Components\TextInput::make('pin')
+                        ->label('PIN de acceso rápido (4 dígitos)')
+                        ->numeric()
+                        ->minLength(4)
+                        ->maxLength(4)
+                        ->password()
+                        ->revealable()
+                        ->helperText('Opcional. Permite login rápido desde móvil sin contraseña larga.')
+                        ->visible(fn (Forms\Get $get): bool =>
+                            in_array($get('user_role'), ['barbero', 'cajero'])
+                        )
+                        ->columnSpanFull(),
                 ])
                 ->columns(3),
         ]);

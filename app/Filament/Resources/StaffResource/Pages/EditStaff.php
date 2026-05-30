@@ -54,6 +54,11 @@ class EditStaff extends EditRecord
                 $userUpdate['password'] = Hash::make($data['password']);
             }
 
+            // Solo actualiza PIN si se escribió algo
+            if (filled($data['pin'] ?? null)) {
+                $userUpdate['pin'] = Hash::make((string) $data['pin']);
+            }
+
             $staff->user->update($userUpdate);
 
             // Sincroniza el rol Spatie (reemplaza el anterior)
@@ -61,7 +66,7 @@ class EditStaff extends EditRecord
         }
 
         // Limpia campos que no existen en la tabla staff
-        unset($data['email'], $data['password'], $data['user_role']);
+        unset($data['email'], $data['password'], $data['user_role'], $data['pin']);
 
         return $data;
     }

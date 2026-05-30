@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -16,6 +17,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -26,7 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(Login::class)
             ->profile(\App\Filament\Pages\EditProfile::class)
             ->colors([
                 'primary' => Color::Amber,
@@ -40,6 +42,22 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
             ])
+            ->renderHook(
+                'panels::body.end',
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.mobile-nav'),
+            )
+            ->renderHook(
+                'panels::head.end',
+                function (): HtmlString {
+                    $user = auth()->user();
+                    if ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['barbero', 'cajero'])) {
+                        return new HtmlString(
+                            '<style>@media(max-width:1023px){.fi-sidebar{display:none!important;}.fi-topbar-open-sidebar-btn{display:none!important;}}</style>'
+                        );
+                    }
+                    return new HtmlString('');
+                },
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

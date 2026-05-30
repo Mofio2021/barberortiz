@@ -27,6 +27,7 @@ class CreateStaff extends CreateRecord
             'phone'     => $data['phone'] ?? null,
             'role'      => $data['user_role'],
             'is_active' => true,
+            'pin'       => filled($data['pin'] ?? null) ? Hash::make((string) $data['pin']) : null,
         ]);
 
         // 2. Asigna el rol Spatie para que las Policies funcionen
@@ -36,7 +37,7 @@ class CreateStaff extends CreateRecord
         $data['user_id'] = $user->id;
 
         // 4. Elimina los campos que no pertenecen al modelo Staff
-        unset($data['email'], $data['password'], $data['user_role']);
+        unset($data['email'], $data['password'], $data['user_role'], $data['pin']);
 
         return $data;
     }

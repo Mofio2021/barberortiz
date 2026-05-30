@@ -22,6 +22,7 @@ class User extends Authenticatable implements HasAvatar
         'role',
         'is_active',
         'photo',
+        'pin',
     ];
 
     protected $hidden = [
