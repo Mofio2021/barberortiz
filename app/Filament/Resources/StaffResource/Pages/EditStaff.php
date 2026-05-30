@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\StaffResource\Pages;
 
 use App\Filament\Resources\StaffResource;
+use Database\Seeders\RoleSeeder;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class EditStaff extends EditRecord
 {
@@ -30,7 +33,7 @@ class EditStaff extends EditRecord
 
         $data['email']     = $staff->user?->email ?? '';
         $data['user_role'] = $staff->user?->roles->first()?->name ?? 'barbero';
-        // password se deja vacío: el usuario solo escribe si quiere cambiarla
+        // password y pin se dejan vacíos: se rellenan solo si el admin quiere cambiarlos
 
         return $data;
     }
@@ -38,6 +41,25 @@ class EditStaff extends EditRecord
     // Actualiza el User vinculado antes de guardar el Staff
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $roleName = $data['user_role'] ?? 'barbero';
+
+        // Validar que el rol es uno de los permitidos
+        if (! in_array($roleName, RoleSeeder::ROLES, true)) {
+            $this->halt();
+            Notification::make()
+                ->title('Rol inválido')
+                ->body("El rol «{$roleName}» no está permitido en el sistema.")
+                ->danger()
+                ->send();
+            return $data;
+        }
+
+        // Garantizar que el rol exista en BD
+        $role = Role::firstOrCreate(
+            ['name'       => $roleName],
+            ['guard_name' => 'web']
+        );
+
         $staff = $this->record->load('user');
 
         if ($staff->user) {
@@ -46,26 +68,23 @@ class EditStaff extends EditRecord
                 'email'     => $data['email'],
                 'branch_id' => $data['branch_id'],
                 'phone'     => $data['phone'] ?? null,
-                'role'      => $data['user_role'],
+                'role'      => $roleName,
             ];
 
-            // Solo actualiza contraseña si se escribió algo
             if (filled($data['password'] ?? null)) {
                 $userUpdate['password'] = Hash::make($data['password']);
             }
 
-            // Solo actualiza PIN si se escribió algo
             if (filled($data['pin'] ?? null)) {
                 $userUpdate['pin'] = Hash::make((string) $data['pin']);
             }
 
             $staff->user->update($userUpdate);
 
-            // Sincroniza el rol Spatie (reemplaza el anterior)
-            $staff->user->syncRoles([$data['user_role']]);
+            // Sincroniza usando el objeto Role (evita RoleDoesNotExist)
+            $staff->user->syncRoles([$role]);
         }
 
-        // Limpia campos que no existen en la tabla staff
         unset($data['email'], $data['password'], $data['user_role'], $data['pin']);
 
         return $data;

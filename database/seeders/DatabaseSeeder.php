@@ -10,15 +10,12 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Crear roles si no existen
-        $roles = ['super_admin', 'admin_sucursal', 'cajero', 'barbero'];
-        foreach ($roles as $role) {
-            Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
-        }
+        // Roles canonicos del sistema (idempotente — seguro en produccion)
+        $this->call(RoleSeeder::class);
 
-        // Usuario admin principal ya existe (Gory), solo asignar rol
+        // Usuario admin principal ya existe (Gory), solo asignar rol si falta
         $admin = User::find(1);
-        if ($admin && !$admin->hasRole('super_admin')) {
+        if ($admin && ! $admin->hasRole('super_admin')) {
             $admin->assignRole('super_admin');
         }
     }
