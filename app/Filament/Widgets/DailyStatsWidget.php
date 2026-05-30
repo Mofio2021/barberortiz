@@ -6,12 +6,21 @@ use App\Models\Appointment;
 use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Auth;
 
 class DailyStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
+
+    // Barbero tiene su propio widget — este es solo para admins y cajero
+    public static function canView(): bool
+    {
+        $user = Auth::user();
+        return ! ($user instanceof User && $user->hasRole('barbero'));
+    }
 
     protected function getStats(): array
     {

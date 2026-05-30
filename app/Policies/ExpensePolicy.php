@@ -2,107 +2,87 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Expense;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Models\User;
 
 class ExpensePolicy
 {
-    use HandlesAuthorization;
+    public function before(User $user, string $_ability): bool|null
+    {
+        if ($user->hasRole('super_admin')) {
+            return true;
+        }
+        return null;
+    }
 
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_expense');
+        return $user->hasAnyRole(['admin_sucursal', 'cajero', 'barbero']);
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Expense $expense): bool
     {
-        return $user->can('view_expense');
+        if ($user->hasAnyRole(['admin_sucursal', 'cajero'])) {
+            return true;
+        }
+        return $user->hasRole('barbero') && $expense->user_id === $user->id;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return $user->can('create_expense');
+        return $user->hasAnyRole(['admin_sucursal', 'cajero', 'barbero']);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Expense $expense): bool
     {
-        return $user->can('update_expense');
+        if ($user->hasAnyRole(['admin_sucursal', 'cajero'])) {
+            return true;
+        }
+        // Barbero solo edita sus propios egresos del día en curso
+        if ($user->hasRole('barbero')) {
+            return $expense->user_id === $user->id
+                && $expense->expense_date->isToday();
+        }
+        return false;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
-    public function delete(User $user, Expense $expense): bool
+    public function delete(User $user, Expense $_expense): bool
     {
-        return $user->can('delete_expense');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can bulk delete.
-     */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_expense');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can permanently delete.
-     */
-    public function forceDelete(User $user, Expense $expense): bool
+    public function forceDelete(User $user, Expense $_expense): bool
     {
-        return $user->can('force_delete_expense');
+        return false;
     }
 
-    /**
-     * Determine whether the user can permanently bulk delete.
-     */
-    public function forceDeleteAny(User $user): bool
+    public function forceDeleteAny(User $_user): bool
     {
-        return $user->can('force_delete_any_expense');
+        return false;
     }
 
-    /**
-     * Determine whether the user can restore.
-     */
-    public function restore(User $user, Expense $expense): bool
+    public function restore(User $user, Expense $_expense): bool
     {
-        return $user->can('restore_expense');
+        return false;
     }
 
-    /**
-     * Determine whether the user can bulk restore.
-     */
-    public function restoreAny(User $user): bool
+    public function restoreAny(User $_user): bool
     {
-        return $user->can('restore_any_expense');
+        return false;
     }
 
-    /**
-     * Determine whether the user can replicate.
-     */
-    public function replicate(User $user, Expense $expense): bool
+    public function replicate(User $user, Expense $_expense): bool
     {
-        return $user->can('replicate_expense');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can reorder.
-     */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_expense');
+        return $user->hasRole('admin_sucursal');
     }
 }

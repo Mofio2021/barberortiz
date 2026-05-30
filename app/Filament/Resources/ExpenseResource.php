@@ -24,29 +24,45 @@ class ExpenseResource extends Resource
     protected static ?string $navigationGroup  = 'Operaciones';
     protected static ?int    $navigationSort   = 20;
 
-    // Barbero no gestiona egresos
     public static function canAccess(): bool
     {
         $user = Auth::user();
         return $user instanceof User
-            && $user->hasAnyRole(['super_admin', 'admin_sucursal', 'cajero']);
+            && $user->hasAnyRole(['super_admin', 'admin_sucursal', 'cajero', 'barbero']);
+    }
+
+    // Barbero solo ve los egresos registrados por él mismo
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user  = Auth::user();
+
+        if ($user instanceof User && $user->hasRole('barbero')) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
     }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
+            // user_id se auto-asigna al usuario autenticado
+            Forms\Components\Hidden::make('user_id')
+                ->default(fn (): int => Auth::id() ?? 0),
+
             Forms\Components\Section::make('Datos del egreso')
                 ->schema([
                     Forms\Components\Select::make('category')
                         ->label('Categoría')
                         ->options([
-                            'insumos'    => 'Insumos / Productos',
-                            'servicios'  => 'Servicios (agua, luz, internet)',
-                            'alquiler'   => 'Alquiler / Local',
-                            'salario'    => 'Salario / Nómina',
-                            'equipo'     => 'Equipo / Herramientas',
-                            'marketing'  => 'Marketing / Publicidad',
-                            'otros'      => 'Otros',
+                            'insumos'   => 'Insumos / Productos',
+                            'servicios' => 'Servicios (agua, luz, internet)',
+                            'alquiler'  => 'Alquiler / Local',
+                            'salario'   => 'Salario / Nómina',
+                            'equipo'    => 'Equipo / Herramientas',
+                            'marketing' => 'Marketing / Publicidad',
+                            'otros'     => 'Otros',
                         ])
                         ->required()
                         ->searchable(),
@@ -92,7 +108,7 @@ class ExpenseResource extends Resource
     {
         return $table
             ->columns([
-                // Descripción + categoría apilados
+                // Descripción + categoría apiladas (mobile-first)
                 Tables\Columns\TextColumn::make('description')
                     ->label('Descripción / Categoría')
                     ->searchable()
@@ -105,13 +121,15 @@ class ExpenseResource extends Resource
                     ->sortable()
                     ->weight('bold'),
 
-                Tables\Columns\BadgeColumn::make('payment_method')
+                Tables\Columns\TextColumn::make('payment_method')
                     ->label('Pago')
-                    ->colors([
-                        'success' => 'cash',
-                        'warning' => 'transfer',
-                        'primary' => 'card',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'cash'     => 'success',
+                        'transfer' => 'warning',
+                        'card'     => 'primary',
+                        default    => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'cash'     => 'Efectivo',
                         'transfer' => 'Transfer.',
@@ -123,6 +141,11 @@ class ExpenseResource extends Resource
                     ->label('Fecha')
                     ->date('d/m/Y')
                     ->sortable(),
+
+                // Solo visible para admins/cajero
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Registrado por')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('expense_date', 'desc')
             ->filters([
@@ -140,7 +163,10 @@ class ExpenseResource extends Resource
 
                 Tables\Filters\Filter::make('este_mes')
                     ->label('Este mes')
-                    ->query(fn (Builder $query): Builder => $query->whereMonth('expense_date', now()->month)),
+                    ->query(fn (Builder $query): Builder =>
+                        $query->whereMonth('expense_date', now()->month)
+                              ->whereYear('expense_date', now()->year)
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

@@ -2,107 +2,85 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\CashClosing;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Models\User;
 
 class CashClosingPolicy
 {
-    use HandlesAuthorization;
+    public function before(User $user, string $_ability): bool|null
+    {
+        if ($user->hasRole('super_admin')) {
+            return true;
+        }
+        return null;
+    }
 
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_cash::closing');
+        return $user->hasAnyRole(['admin_sucursal', 'cajero', 'barbero']);
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, CashClosing $cashClosing): bool
     {
-        return $user->can('view_cash::closing');
+        if ($user->hasAnyRole(['admin_sucursal', 'cajero'])) {
+            return true;
+        }
+        // Barbero: solo lectura de sus propios cierres
+        return $user->hasRole('barbero') && $cashClosing->user_id === $user->id;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
+    // Solo admin y cajero pueden realizar cierres de caja
     public function create(User $user): bool
     {
-        return $user->can('create_cash::closing');
+        return $user->hasAnyRole(['admin_sucursal', 'cajero']);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, CashClosing $cashClosing): bool
     {
-        return $user->can('update_cash::closing');
+        if ($user->hasRole('admin_sucursal')) {
+            return true;
+        }
+        // Cajero puede corregir un cierre mientras no esté cerrado
+        return $user->hasRole('cajero') && ! $cashClosing->is_closed;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
-    public function delete(User $user, CashClosing $cashClosing): bool
+    public function delete(User $user, CashClosing $_cashClosing): bool
     {
-        return $user->can('delete_cash::closing');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can bulk delete.
-     */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_cash::closing');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can permanently delete.
-     */
-    public function forceDelete(User $user, CashClosing $cashClosing): bool
+    public function forceDelete(User $user, CashClosing $_cashClosing): bool
     {
-        return $user->can('force_delete_cash::closing');
+        return false;
     }
 
-    /**
-     * Determine whether the user can permanently bulk delete.
-     */
-    public function forceDeleteAny(User $user): bool
+    public function forceDeleteAny(User $_user): bool
     {
-        return $user->can('force_delete_any_cash::closing');
+        return false;
     }
 
-    /**
-     * Determine whether the user can restore.
-     */
-    public function restore(User $user, CashClosing $cashClosing): bool
+    public function restore(User $user, CashClosing $_cashClosing): bool
     {
-        return $user->can('restore_cash::closing');
+        return false;
     }
 
-    /**
-     * Determine whether the user can bulk restore.
-     */
-    public function restoreAny(User $user): bool
+    public function restoreAny(User $_user): bool
     {
-        return $user->can('restore_any_cash::closing');
+        return false;
     }
 
-    /**
-     * Determine whether the user can replicate.
-     */
-    public function replicate(User $user, CashClosing $cashClosing): bool
+    public function replicate(User $user, CashClosing $_cashClosing): bool
     {
-        return $user->can('replicate_cash::closing');
+        return $user->hasRole('admin_sucursal');
     }
 
-    /**
-     * Determine whether the user can reorder.
-     */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_cash::closing');
+        return $user->hasRole('admin_sucursal');
     }
 }
