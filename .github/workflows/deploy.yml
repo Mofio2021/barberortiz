@@ -42,17 +42,17 @@ jobs:
           # Solo sube archivos que cambiaron desde el commit anterior
           dangerous-clean-slate: false
           exclude: |
-            **/.git*
             **/.git*/**
             **/node_modules/**
+            **/vendor/**
             **/storage/framework/cache/**
             **/storage/framework/sessions/**
             **/storage/framework/views/**
             **/storage/logs/**
-            **/.env
-            **/.env.*
+            **/.env*
             **/tests/**
             **/phpunit.xml*
             **/.phpunit*
             **/README*
             **/*.md
+            
