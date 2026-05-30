@@ -293,7 +293,8 @@
             @if($paymentMethod === 'cash')
             <div>
                 <label class="text-xs text-gray-500 dark:text-gray-400">Monto recibido (Bs):</label>
-                <input wire:model.live="amountPaid" type="number" min="0" step="1" placeholder="0.00"
+                <input wire:model.live="amountPaid" type="number" min="0" step="1"
+                    placeholder="{{ number_format($total, 2) }}"
                     class="w-full mt-1 px-3 py-3 text-center text-2xl font-bold border-2 rounded-xl
                            dark:bg-gray-700 dark:border-gray-600 dark:text-white
                            focus:ring-2 focus:ring-amber-400 focus:outline-none"/>
@@ -304,6 +305,57 @@
                         </span>
                     </div>
                 @endif
+            </div>
+            @endif
+
+            {{-- Comprobante QR (obligatorio cuando pago = QR) --}}
+            @if($paymentMethod === 'qr')
+            <div>
+                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Comprobante de pago QR <span class="text-red-400">*</span>
+                </label>
+                <label class="relative mt-2 flex flex-col items-center justify-center w-full py-5
+                              border-2 border-dashed rounded-xl cursor-pointer transition-all
+                              {{ $qrReceipt
+                                 ? 'border-green-400 bg-green-50 dark:bg-green-950/50'
+                                 : 'border-amber-300 hover:border-amber-400 bg-amber-50 dark:bg-amber-950/50' }}">
+
+                    {{-- Input oculto — click sobre el label lo activa --}}
+                    <input wire:model="qrReceipt"
+                           type="file"
+                           accept="image/*"
+                           capture="environment"
+                           class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
+
+                    @if($qrReceipt)
+                        {{-- Estado: archivo adjuntado --}}
+                        <svg class="w-9 h-9 text-green-500 mb-1.5" fill="none" viewBox="0 0 24 24"
+                             stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                        <span class="text-sm font-bold text-green-600 dark:text-green-400">Comprobante adjuntado ✓</span>
+                        <span class="text-xs text-green-400 mt-0.5">Toca para cambiar la imagen</span>
+                    @else
+                        {{-- Estado: sin archivo --}}
+                        <svg class="w-9 h-9 text-amber-400 mb-1.5" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25
+                                   8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574
+                                   c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0
+                                   1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0
+                                   0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
+                        </svg>
+                        <span class="text-sm font-semibold text-amber-600 dark:text-amber-400">Toca para adjuntar foto del QR</span>
+                        <span class="text-xs text-amber-400 mt-0.5">Obligatorio · Abre la cámara en móvil</span>
+                    @endif
+                </label>
+
+                @error('qrReceipt')
+                    <p class="text-red-500 text-xs mt-1 text-center">{{ $message }}</p>
+                @enderror
             </div>
             @endif
 

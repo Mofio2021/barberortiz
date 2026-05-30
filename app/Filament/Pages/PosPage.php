@@ -15,9 +15,12 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\WithFileUploads;
 
 class PosPage extends Page
 {
+    use WithFileUploads;
+
     protected static ?string $navigationIcon  = 'heroicon-o-shopping-cart';
     protected static string  $view            = 'filament.pages.pos-page';
     protected static ?string $navigationLabel = 'Punto de Venta (POS)';
@@ -44,6 +47,9 @@ class PosPage extends Page
     public float   $total            = 0;
     public float   $change           = 0;
     public float   $totalCommission  = 0;
+
+    // Comprobante QR — se sube como archivo temporal Livewire
+    public $qrReceipt = null;
 
     // ── Egreso rápido desde el POS ──────────────────────────────
     public bool   $showExpenseModal     = false;
@@ -212,6 +218,16 @@ class PosPage extends Page
             return;
         }
 
+        // Validar comprobante QR obligatorio
+        if ($this->paymentMethod === 'qr' && ! $this->qrReceipt) {
+            Notification::make()
+                ->title('Comprobante QR obligatorio')
+                ->body('Adjunta la foto del comprobante para continuar.')
+                ->warning()
+                ->send();
+            return;
+        }
+
         DB::beginTransaction();
         try {
             $customer = null;
@@ -222,6 +238,15 @@ class PosPage extends Page
                 );
                 $customer->increment('total_visits');
                 $customer->update(['last_visit' => now()]);
+            }
+
+            // Guardar comprobante QR en carpeta organizada por fecha
+            $qrReceiptPath = null;
+            if ($this->paymentMethod === 'qr' && $this->qrReceipt) {
+                $qrReceiptPath = $this->qrReceipt->store(
+                    'comprobantes/' . today()->format('Y-m-d'),
+                    'public'
+                );
             }
 
             $sale = Sale::create([
@@ -237,17 +262,18 @@ class PosPage extends Page
                 'amount_paid'      => $this->amountPaid ?: $this->total,
                 'change_given'     => $this->change,
                 'notes'            => $this->notes,
+                'qr_receipt_path'  => $qrReceiptPath,
             ]);
 
             foreach ($this->cartItems as $item) {
                 SaleItem::create([
-                    'sale_id'          => $sale->id,
-                    'staff_id'         => $this->selectedStaffId,
-                    'item_type'        => $item['type'],
-                    'item_id'          => $item['id'],
-                    'item_name'        => $item['name'],
-                    'price_at_time'    => $item['price'],
-                    'quantity'         => $item['quantity'],
+                    'sale_id'           => $sale->id,
+                    'staff_id'          => $this->selectedStaffId,
+                    'item_type'         => $item['type'],
+                    'item_id'           => $item['id'],
+                    'item_name'         => $item['name'],
+                    'price_at_time'     => $item['price'],
+                    'quantity'          => $item['quantity'],
                     'commission_amount' => $item['commission'],
                 ]);
                 if ($item['type'] === 'product') {
@@ -301,23 +327,32 @@ class PosPage extends Page
 
     public function resetCart(): void
     {
-        $this->cartItems     = [];
-        $this->customerPhone = '';
-        $this->customerName  = 'Cliente General';
-        $this->customerId    = null;
-        $this->paymentMethod = 'cash';
-        $this->amountPaid    = 0;
-        $this->discount      = 0;
-        $this->notes         = '';
-        $this->subtotal      = 0;
-        $this->total         = 0;
-        $this->change        = 0;
+        $this->cartItems       = [];
+        $this->customerPhone   = '';
+        $this->customerName    = 'Cliente General';
+        $this->customerId      = null;
+        $this->paymentMethod   = 'cash';
+        $this->amountPaid      = 0;
+        $this->discount        = 0;
+        $this->notes           = '';
+        $this->subtotal        = 0;
+        $this->total           = 0;
+        $this->change          = 0;
         $this->totalCommission = 0;
-        $this->searchTerm    = '';
+        $this->searchTerm      = '';
+        $this->qrReceipt       = null;
     }
 
     public function updatedAmountPaid(): void { $this->recalculate(); }
     public function updatedDiscount(): void   { $this->recalculate(); }
+
+    // Cuando cambia el método de pago, limpiar campos anteriores
+    public function updatedPaymentMethod(): void
+    {
+        $this->qrReceipt  = null;
+        $this->amountPaid = 0;
+        $this->change     = 0;
+    }
 
     public static function canAccess(): bool
     {
