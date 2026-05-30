@@ -23,7 +23,6 @@ class StaffResource extends Resource
     protected static ?string $navigationGroup  = 'Configuración';
     protected static ?int    $navigationSort   = 20;
 
-    // Cajero: acceso de solo lectura (el policy bloquea create/update/delete)
     public static function canAccess(): bool
     {
         $user = Auth::user();
@@ -34,6 +33,7 @@ class StaffResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+
             Forms\Components\Section::make('Datos del barbero')
                 ->schema([
                     Forms\Components\Select::make('branch_id')
@@ -91,6 +91,43 @@ class StaffResource extends Resource
                         ->default(50.00),
                 ])
                 ->columns(3),
+
+            Forms\Components\Section::make('Cuenta de acceso al sistema')
+                ->description('Credenciales que usará el staff para ingresar al panel.')
+                ->icon('heroicon-o-key')
+                ->schema([
+                    Forms\Components\Select::make('user_role')
+                        ->label('Rol en el sistema')
+                        ->options(function (): array {
+                            $roles = [
+                                'barbero'        => 'Barbero',
+                                'cajero'         => 'Cajero',
+                                'admin_sucursal' => 'Administrador de Sucursal',
+                            ];
+                            $authUser = Auth::user();
+                            if ($authUser instanceof User && $authUser->hasRole('super_admin')) {
+                                $roles['super_admin'] = 'Super Admin (Propietario)';
+                            }
+                            return $roles;
+                        })
+                        ->required()
+                        ->default('barbero'),
+
+                    Forms\Components\TextInput::make('email')
+                        ->label('Correo electrónico (login)')
+                        ->email()
+                        ->required()
+                        ->maxLength(255),
+
+                    Forms\Components\TextInput::make('password')
+                        ->label('Contraseña')
+                        ->password()
+                        ->revealable()
+                        ->required(fn (string $operation): bool => $operation === 'create')
+                        ->minLength(8)
+                        ->helperText('Edición: deja en blanco para no cambiarla.'),
+                ])
+                ->columns(3),
         ]);
     }
 
@@ -104,27 +141,55 @@ class StaffResource extends Resource
                     ->sortable()
                     ->description(fn (Staff $record): string => $record->branch?->name ?? ''),
 
-                Tables\Columns\TextColumn::make('phone')
-                    ->label('Teléfono')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.email')
+                    ->label('Login')
+                    ->searchable()
+                    ->copyable()
+                    ->icon('heroicon-o-envelope'),
+
+                // Rol del sistema desde Spatie
+                Tables\Columns\TextColumn::make('rol_sistema')
+                    ->label('Rol')
+                    ->getStateUsing(fn (Staff $record): string => match (
+                        $record->user?->roles->first()?->name
+                    ) {
+                        'super_admin'    => 'Super Admin',
+                        'admin_sucursal' => 'Administrador',
+                        'cajero'         => 'Cajero',
+                        'barbero'        => 'Barbero',
+                        default          => 'Sin rol',
+                    })
+                    ->badge()
+                    ->color(fn (Staff $record): string => match (
+                        $record->user?->roles->first()?->name
+                    ) {
+                        'super_admin'    => 'danger',
+                        'admin_sucursal' => 'warning',
+                        'cajero'         => 'info',
+                        default          => 'success',
+                    }),
 
                 Tables\Columns\TextColumn::make('payment_type')
                     ->label('Pago')
                     ->badge()
-                    ->color('info')
+                    ->color('gray')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'commission' => 'Comisión',
                         'salary'     => 'Sueldo',
                         'hybrid'     => 'Híbrido',
                         default      => $state,
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('commission_value')
                     ->label('Comisión')
                     ->formatStateUsing(
                         fn (Staff $record, $state): string =>
-                            $record->commission_type === 'percentage' ? "{$state}%" : "Bs {$state}"
-                    ),
+                            $record->commission_type === 'percentage'
+                                ? "{$state}%"
+                                : "Bs {$state}"
+                    )
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
