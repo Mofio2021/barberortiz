@@ -53,26 +53,27 @@ class Login extends BaseLogin
         $this->pinMode = ! $this->pinMode;
     }
 
-    public function authenticate(): void
-    {
-        $data = $this->form->getState();
+    public function authenticate(): ?\Filament\Http\Responses\Auth\Contracts\LoginResponse
+{
+    $data = $this->form->getState();
 
-        // Flujo de autenticación con PIN
-        if ($this->pinMode && filled($data['pin'] ?? null)) {
-            $user = User::where('email', $data['email'])->first();
+    // Flujo de autenticación con PIN
+    if ($this->pinMode && filled($data['pin'] ?? null)) {
+        $user = User::where('email', $data['email'])->first();
 
-            if (! $user || ! $user->pin || ! Hash::check((string) $data['pin'], $user->pin)) {
-                $this->throwFailureValidationException();
-            }
-
-            Filament::auth()->login($user, remember: true);
-            session()->regenerate();
-            $this->redirect(Filament::getUrl());
-
-            return;
+        if (! $user || ! $user->pin || ! Hash::check((string) $data['pin'], $user->pin)) {
+            $this->throwFailureValidationException();
         }
 
-        // Flujo estándar de contraseña
-        parent::authenticate();
+        Filament::auth()->login($user, remember: true);
+        
+        session()->regenerate();
+
+        // DEBES devolver una respuesta aquí
+        return app(\Filament\Http\Responses\Auth\Contracts\LoginResponse::class);
     }
+
+    // Flujo estándar de contraseña
+    return parent::authenticate();
+}
 }
