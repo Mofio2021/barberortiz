@@ -117,7 +117,18 @@ class StaffResource extends Resource
                         ->label('Correo electrónico (login)')
                         ->email()
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        // En CREATE $record es null → valida único en toda la tabla.
+                        // En EDIT $record es Staff → $record->user es el User vinculado
+                        // cuyo ID se ignora, evitando el falso positivo de "email en uso".
+                        ->unique(
+                            table: 'users',
+                            column: 'email',
+                            ignorable: fn ($record) => $record?->user,
+                        )
+                        ->validationMessages([
+                            'unique' => 'Este correo electrónico ya está registrado en el sistema.',
+                        ]),
 
                     Forms\Components\TextInput::make('password')
                         ->label('Contraseña')
