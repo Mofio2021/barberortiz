@@ -63,8 +63,10 @@
      ═══════════════════════════════════════════════════════ --}}
 <div
     x-data="{ tab: 'catalog' }"
-    class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:pb-0
-           {{ $hasMobileNav ? 'pb-36' : 'pb-20' }}"
+    class="grid grid-cols-1 lg:grid-cols-3 gap-4"
+    style="{{ $hasMobileNav
+        ? 'padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));'
+        : 'padding-bottom: 5rem;' }}"
 >
 
     {{-- ══ PANEL IZQUIERDO: Catálogo ══ --}}

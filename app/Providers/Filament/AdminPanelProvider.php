@@ -42,32 +42,67 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
             ])
+
+            // ── CSS del proyecto (Tailwind v4 compilado) ───────────────────
+            // Carga app.css para que las clases Tailwind personalizadas funcionen
+            // en todos los componentes Blade del panel (widgets, POS, etc.).
+            // Si el build no existe aún, se ignora silenciosamente.
             ->renderHook(
-                'panels::body.end',
-                fn (): \Illuminate\Contracts\View\View => view('filament.components.mobile-nav'),
+                'panels::styles.after',
+                function (): HtmlString {
+                    try {
+                        return new HtmlString(app(\Illuminate\Foundation\Vite::class)('resources/css/app.css'));
+                    } catch (\Exception) {
+                        return new HtmlString('');
+                    }
+                },
             )
+
+            // ── CSS base del sistema (independiente del build de Tailwind) ─
+            // Todo esto usa CSS nativo para no depender de que el proyecto
+            // tenga npm run build ejecutado.
             ->renderHook(
                 'panels::head.end',
                 function (): HtmlString {
                     $user = \Illuminate\Support\Facades\Auth::user();
-                    if ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['barbero', 'cajero'])) {
-                        // fi-main-sidebar es el selector correcto en Filament v3.3.x
-                        // fi-topbar-open-sidebar-btn y fi-topbar-close-sidebar-btn son los botones del hamburger
-                        return new HtmlString('<style>
+                    $isStaff = $user && method_exists($user, 'hasAnyRole')
+                        && $user->hasAnyRole(['barbero', 'cajero']);
+
+                    $sidebarCss = $isStaff ? '
+/* ── Ocultar sidebar de Filament para barbero/cajero en móvil ─── */
 @media(max-width:1023px){
     .fi-main-sidebar,
     .fi-sidebar-close-overlay          { display:none!important; }
     .fi-topbar-open-sidebar-btn,
     .fi-topbar-close-sidebar-btn       { display:none!important; }
-    /* El wrapper del topbar debe ocupar el ancho completo sin reservar espacio para el sidebar */
     .fi-main-ctn                       { padding-left:0!important; }
-    .fi-main-ctn-sidebar-open          { padding-left:0!important; margin-left:0!important; }
+    .fi-main-ctn-sidebar-open          { padding-left:0!important;margin-left:0!important; }
+}' : '';
+
+                    return new HtmlString('<style>
+/* ── Ocultar bottom nav en desktop ─────────────────────────────── */
+@media(min-width:1024px){
+    .barber-mobile-nav { display:none!important; }
 }
+
+/* ── Espacio inferior para que el contenido no quede bajo el nav ─ */
+/* Se aplica solo en móvil cuando existe el bottom nav */
+@media(max-width:1023px){
+    .fi-panel-admin .has-mobile-nav .fi-main {
+        padding-bottom: 4.5rem !important;
+    }
+}
+' . $sidebarCss . '
 </style>');
-                    }
-                    return new HtmlString('');
                 },
             )
+
+            // ── Mobile nav (render al final del body) ─────────────────────
+            ->renderHook(
+                'panels::body.end',
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.mobile-nav'),
+            )
+
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

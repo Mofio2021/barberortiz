@@ -21,14 +21,14 @@ $nav = [
     [
         'label' => 'Egresos',
         'url'   => '/admin/expenses',
-        'match' => 'admin/expenses*',
+        'match' => 'admin/expenses',
         'exact' => false,
         'svg'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/>',
     ],
     [
         'label' => 'Caja',
         'url'   => '/admin/cash-closings',
-        'match' => 'admin/cash-closings*',
+        'match' => 'admin/cash-closings',
         'exact' => false,
         'svg'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25V13.5Zm0 2.25h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25V18Zm2.498-6.75h.007v.008h-.007v-.008Zm0 2.25h.007v.008h-.007V13.5Zm0 2.25h.007v.008h-.007v-.008Zm0 2.25h.007v.008h-.007V18Zm2.504-6.75h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V13.5Zm0 2.25h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V18Zm2.498-6.75h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V13.5ZM8.25 6h7.5v2.25h-7.5V6ZM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.684 4.5 4.832V18a2.25 2.25 0 0 0 2.25 2.25h10.5A2.25 2.25 0 0 0 19.5 18V4.832c0-1.15-.807-2.132-1.907-2.26A48.678 48.678 0 0 0 12 2.25Z"/>',
     ],
@@ -43,11 +43,30 @@ $nav = [
 @endphp
 
 @if($showMobileNav)
+{{-- ═══════════════════════════════════════════════════════════════
+     MOBILE BOTTOM NAV
+     El layout (flex horizontal) se define con style="" para garantizar
+     que funcione SIN depender del build de Tailwind/Vite.
+     Las clases de color/borde usan CSS de Filament como fallback visual.
+     ═══════════════════════════════════════════════════════════════ --}}
 <nav
-    class="fixed bottom-0 inset-x-0 z-50 lg:hidden
-           bg-gray-900/95 backdrop-blur-sm border-t border-gray-700
-           grid grid-cols-5"
-    style="padding-bottom: env(safe-area-inset-bottom, 0px)"
+    class="barber-mobile-nav"
+    style="
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        background: rgba(17,24,39,0.97);
+        border-top: 1px solid #374151;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    "
+    aria-label="Navegación móvil"
 >
     @foreach($nav as $item)
     @php
@@ -56,17 +75,32 @@ $nav = [
             : request()->is($item['match'] . '*');
     @endphp
     <a href="{{ $item['url'] }}"
-       class="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[3.5rem]
-              text-xs font-medium transition-colors touch-manipulation select-none
-              {{ $active
-                  ? 'text-amber-400 border-t-2 border-amber-400 -mt-px'
-                  : 'text-gray-400 hover:text-gray-200' }}"
+       style="
+           flex: 1;
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+           justify-content: center;
+           gap: 2px;
+           padding: 8px 2px;
+           min-height: 56px;
+           text-decoration: none;
+           font-size: 10px;
+           font-weight: 600;
+           transition: color 0.15s;
+           color: {{ $active ? '#fbbf24' : '#9ca3af' }};
+           border-top: 2px solid {{ $active ? '#fbbf24' : 'transparent' }};
+           margin-top: -2px;
+           -webkit-tap-highlight-color: transparent;
+           user-select: none;
+       "
     >
-        <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24"
+        <svg style="width:22px;height:22px;flex-shrink:0;"
+             fill="none" viewBox="0 0 24 24"
              stroke-width="1.5" stroke="currentColor" aria-hidden="true">
             {!! $item['svg'] !!}
         </svg>
-        <span class="leading-none">{{ $item['label'] }}</span>
+        <span style="line-height:1;white-space:nowrap;">{{ $item['label'] }}</span>
     </a>
     @endforeach
 </nav>
