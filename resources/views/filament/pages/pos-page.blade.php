@@ -111,73 +111,123 @@
         </div>
         @endif
 
-        {{-- Búsqueda + Tabs servicios/productos --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-3">
-            <div class="flex gap-2 items-center">
-                <input wire:model.live.debounce.300ms="searchTerm" type="search"
-                    placeholder="Buscar servicio o producto…"
-                    class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
-                           dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"/>
+        {{-- ── Barra de búsqueda + tabs ─────────────────────── --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-3 sticky top-0 z-10">
+            {{-- Búsqueda --}}
+            <input wire:model.live.debounce.300ms="searchTerm" type="search"
+                placeholder="Buscar servicio o producto…"
+                class="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
+                       dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 mb-2"/>
+
+            {{-- Tabs tipo segmento --}}
+            <div class="grid grid-cols-2 gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                 <button wire:click="$set('activeTab', 'services')"
-                    class="px-4 py-2.5 rounded-lg text-sm font-semibold transition-all touch-manipulation whitespace-nowrap
-                    {{ $activeTab === 'services'
-                        ? 'bg-blue-500 text-white'
-                        : 'border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300' }}">
-                    ✂ Servicios
+                    class="flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold
+                           transition-all touch-manipulation
+                           {{ $activeTab === 'services'
+                               ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                               : 'text-gray-500 dark:text-gray-400' }}">
+                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.175 2.175 0 001.083-1.839l.02-.428m-2.671 2.267l2.077-1.199m0-3.328a4.323 4.323 0 012.068-1.795"/>
+                    </svg>
+                    Servicios
                 </button>
                 <button wire:click="$set('activeTab', 'products')"
-                    class="px-4 py-2.5 rounded-lg text-sm font-semibold transition-all touch-manipulation whitespace-nowrap
-                    {{ $activeTab === 'products'
-                        ? 'bg-green-500 text-white'
-                        : 'border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300' }}">
+                    class="flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold
+                           transition-all touch-manipulation
+                           {{ $activeTab === 'products'
+                               ? 'bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 shadow-sm'
+                               : 'text-gray-500 dark:text-gray-400' }}">
+                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"/>
+                    </svg>
                     Productos
                 </button>
             </div>
         </div>
 
-        {{-- Grilla de Servicios --}}
-        @if($activeTab === 'services')
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                @forelse($this->getServices() as $service)
-                    <button wire:click="addService({{ $service->id }})"
-                        class="p-4 rounded-xl border-2 border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950
-                               hover:border-blue-400 active:scale-95 transition-all text-left touch-manipulation">
-                        <div class="font-bold text-blue-800 dark:text-blue-200 text-sm leading-tight">{{ $service->name }}</div>
-                        <div class="text-blue-600 dark:text-blue-300 font-extrabold text-lg mt-1">
-                            Bs {{ number_format($service->price, 2) }}
-                        </div>
-                        <div class="text-xs text-blue-400 mt-1">{{ $service->duration_minutes }} min</div>
-                    </button>
-                @empty
-                    <p class="text-gray-400 col-span-3 text-center py-8">No hay servicios activos</p>
-                @endforelse
-            </div>
-        </div>
-        @endif
+        {{-- ── Catálogo: scroll independiente en móvil ──────── --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+            <div class="overflow-y-auto p-3 lg:p-4
+                        max-h-[58dvh] lg:max-h-none
+                        overscroll-contain">
 
-        {{-- Grilla de Productos --}}
-        @if($activeTab === 'products')
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                @forelse($this->getProducts() as $product)
-                    <button wire:click="addProduct({{ $product->id }})"
-                        class="p-4 rounded-xl border-2 border-green-100 dark:border-green-900 bg-green-50 dark:bg-green-950
-                               hover:border-green-400 active:scale-95 transition-all text-left touch-manipulation">
-                        <div class="font-bold text-green-800 dark:text-green-200 text-sm leading-tight">{{ $product->name }}</div>
-                        <div class="text-green-600 dark:text-green-300 font-extrabold text-lg mt-1">
-                            Bs {{ number_format($product->price, 2) }}
+                {{-- Grilla de Servicios --}}
+                @if($activeTab === 'services')
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    @forelse($this->getServices() as $service)
+                        <button wire:click="addService({{ $service->id }})"
+                            class="flex flex-col justify-between p-3 rounded-xl min-h-[88px]
+                                   border-2 border-blue-100 dark:border-blue-900
+                                   bg-blue-50 dark:bg-blue-950
+                                   hover:border-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900
+                                   active:scale-95 transition-all text-left touch-manipulation
+                                   focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="font-semibold text-blue-800 dark:text-blue-200 text-sm leading-snug line-clamp-2">
+                                {{ $service->name }}
+                            </p>
+                            <div class="mt-1.5">
+                                <p class="text-blue-600 dark:text-blue-300 font-extrabold text-base leading-none">
+                                    Bs {{ number_format($service->price, 2) }}
+                                </p>
+                                <p class="text-xs text-blue-400 mt-0.5">{{ $service->duration_minutes }} min</p>
+                            </div>
+                        </button>
+                    @empty
+                        <div class="col-span-2 sm:col-span-3 flex flex-col items-center justify-center py-10 text-gray-400">
+                            <svg class="w-10 h-10 mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3z"/>
+                            </svg>
+                            <p class="text-sm">No hay servicios activos en esta sucursal</p>
                         </div>
-                        <div class="text-xs mt-1 {{ $product->isLowStock() ? 'text-red-400 font-semibold' : 'text-green-400' }}">
-                            Stock: {{ $product->stock }}
+                    @endforelse
+                </div>
+                @endif
+
+                {{-- Grilla de Productos --}}
+                @if($activeTab === 'products')
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    @forelse($this->getProducts() as $product)
+                        <button wire:click="addProduct({{ $product->id }})"
+                            class="flex flex-col justify-between p-3 rounded-xl min-h-[88px]
+                                   border-2 border-green-100 dark:border-green-900
+                                   bg-green-50 dark:bg-green-950
+                                   hover:border-green-400 hover:bg-green-100 dark:hover:bg-green-900
+                                   active:scale-95 transition-all text-left touch-manipulation
+                                   focus:outline-none focus:ring-2 focus:ring-green-400">
+                            <p class="font-semibold text-green-800 dark:text-green-200 text-sm leading-snug line-clamp-2">
+                                {{ $product->name }}
+                            </p>
+                            <div class="mt-1.5">
+                                <p class="text-green-600 dark:text-green-300 font-extrabold text-base leading-none">
+                                    Bs {{ number_format($product->price, 2) }}
+                                </p>
+                                <p class="text-xs mt-0.5
+                                    {{ $product->isOutOfStock()
+                                        ? 'text-red-500 font-bold'
+                                        : ($product->isLowStock() ? 'text-orange-400 font-semibold' : 'text-green-400') }}">
+                                    Stock: {{ $product->stock }}
+                                    @if($product->isLowStock() && !$product->isOutOfStock()) ⚠ @endif
+                                </p>
+                            </div>
+                        </button>
+                    @empty
+                        <div class="col-span-2 sm:col-span-3 flex flex-col items-center justify-center py-10 text-gray-400">
+                            <svg class="w-10 h-10 mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"/>
+                            </svg>
+                            <p class="text-sm">No hay productos con stock en esta sucursal</p>
                         </div>
-                    </button>
-                @empty
-                    <p class="text-gray-400 col-span-3 text-center py-8">No hay productos con stock</p>
-                @endforelse
-            </div>
+                    @endforelse
+                </div>
+                @endif
+
+            </div>{{-- /overflow-y-auto --}}
         </div>
-        @endif
     </div>
 
     {{-- ══ PANEL DERECHO: Carrito + Cobro ══ --}}
