@@ -13,18 +13,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 1
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, bcmath, pdo, pdo_mysql
+
       - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction
+
       - name: Build assets
         run: |
           npm ci
           npm run build
+
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -34,8 +38,9 @@ jobs:
           server-dir: ${{ secrets.SERVER_PATH }}
           protocol: ftp
           port: 21
-          clean: true
-          dangerous-clean-slate: false
+          timeout: 60000
+          log-level: standard
+          clean: false
           exclude: |
             **/.git*/**
             **/node_modules/**
@@ -44,10 +49,12 @@ jobs:
             **/storage/framework/sessions/**
             **/storage/framework/views/**
             **/storage/logs/**
+            **/storage/app/public/**
+            **/public/storage/**
             **/.env*
             **/tests/**
             **/phpunit.xml*
             **/.phpunit*
             **/README*
             **/*.md
-
+            **/*.log
