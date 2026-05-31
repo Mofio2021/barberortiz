@@ -1,4 +1,9 @@
-Options +FollowSymLinks
+Options +FollowSymLinks -Indexes
+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine Off
 </IfModule>
