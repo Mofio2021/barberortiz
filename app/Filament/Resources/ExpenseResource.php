@@ -31,14 +31,15 @@ class ExpenseResource extends Resource
             && $user->hasAnyRole(['super_admin', 'admin_sucursal', 'cajero', 'barbero']);
     }
 
-    // Barbero solo ve los egresos registrados por él mismo
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
         $user  = Auth::user();
 
         if ($user instanceof User && $user->hasRole('barbero')) {
-            $query->where('user_id', $user->id);
+            // Barbero: su sucursal, solo hoy — sin posibilidad de cambiar el filtro
+            $query->where('branch_id', $user->branch_id)
+                  ->whereDate('expense_date', today());
         }
 
         return $query;
@@ -161,12 +162,30 @@ class ExpenseResource extends Resource
                         'otros'     => 'Otros',
                     ]),
 
-                Tables\Filters\Filter::make('este_mes')
-                    ->label('Este mes')
-                    ->query(fn (Builder $query): Builder =>
-                        $query->whereMonth('expense_date', now()->month)
-                              ->whereYear('expense_date', now()->year)
-                    ),
+                Tables\Filters\Filter::make('fecha')
+                    ->label('Rango de fechas')
+                    ->form([
+                        Forms\Components\DatePicker::make('desde')
+                            ->label('Desde')
+                            ->displayFormat('d/m/Y')
+                            ->default(today()),
+                        Forms\Components\DatePicker::make('hasta')
+                            ->label('Hasta')
+                            ->displayFormat('d/m/Y')
+                            ->default(today()),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder =>
+                        $query
+                            ->when($data['desde'] ?? null, fn ($q, $v) => $q->whereDate('expense_date', '>=', $v))
+                            ->when($data['hasta'] ?? null, fn ($q, $v) => $q->whereDate('expense_date', '<=', $v))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['desde'] ?? null) || ($data['hasta'] ?? null)
+                            ? 'Fecha: ' . ($data['desde'] ?? '…') . ' → ' . ($data['hasta'] ?? '…')
+                            : null
+                    )
+                    // Barbero ya tiene la fecha fija en getEloquentQuery; el filtro UI no le aplica
+                    ->hidden(fn (): bool => (bool) Auth::user()?->hasRole('barbero')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

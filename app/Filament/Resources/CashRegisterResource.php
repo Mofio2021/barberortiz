@@ -173,6 +173,33 @@ class CashRegisterResource extends Resource
                     )
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                Tables\Columns\TextColumn::make('diferencia')
+                    ->label('Diferencia')
+                    ->getStateUsing(fn (CashRegister $record): ?float =>
+                        $record->closing_balance === null
+                            ? null
+                            : (float) $record->closing_balance
+                              - ((float) $record->opening_balance
+                                 + (float) $record->total_cash_sales
+                                 - (float) $record->total_expenses)
+                    )
+                    ->placeholder('—')
+                    ->formatStateUsing(fn ($state): string =>
+                        'Bs ' . number_format((float) $state, 2)
+                    )
+                    ->description(fn ($state): ?string => match (true) {
+                        $state === null     => null,
+                        (float) $state === 0.0 => 'Correcto',
+                        (float) $state < 0  => 'Faltante',
+                        default             => 'Sobrante',
+                    })
+                    ->color(fn ($state): string => match (true) {
+                        $state === null        => 'gray',
+                        (float) $state === 0.0 => 'success',
+                        (float) $state < 0     => 'danger',
+                        default                => 'warning',
+                    }),
+
                 Tables\Columns\TextColumn::make('closed_at')
                     ->label('Cierre')
                     ->dateTime('d/m/Y H:i')
@@ -191,7 +218,7 @@ class CashRegisterResource extends Resource
                         Forms\Components\DatePicker::make('desde')
                             ->label('Desde')
                             ->displayFormat('d/m/Y')
-                            ->default(now()->startOfMonth()),
+                            ->default(today()),
                         Forms\Components\DatePicker::make('hasta')
                             ->label('Hasta')
                             ->displayFormat('d/m/Y')
@@ -201,6 +228,11 @@ class CashRegisterResource extends Resource
                         $query
                             ->when($data['desde'] ?? null, fn ($q, $v) => $q->whereDate('opened_at', '>=', $v))
                             ->when($data['hasta'] ?? null, fn ($q, $v) => $q->whereDate('opened_at', '<=', $v))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['desde'] ?? null) || ($data['hasta'] ?? null)
+                            ? 'Apertura: ' . ($data['desde'] ?? '…') . ' → ' . ($data['hasta'] ?? '…')
+                            : null
                     ),
             ])
             ->actions([
