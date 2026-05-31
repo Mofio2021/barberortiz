@@ -234,7 +234,7 @@
                     <span class="text-sm font-bold text-amber-600 dark:text-amber-400">
                         Bs {{ number_format($stat->total_comision, 2) }}
                     </span>
-                    <p class="text-xs text-gray-400">pendiente</p>
+                    <p class="text-xs text-gray-400">comisión</p>
                 </div>
             </div>
             @endforeach
