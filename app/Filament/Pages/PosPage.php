@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Branch;
+use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Product;
@@ -34,7 +35,7 @@ class PosPage extends Page
     public ?int    $selectedStaffId  = null;
     public array   $cartItems        = [];
     public string  $customerPhone    = '';
-    public string  $customerName     = 'Cliente General';
+    public string  $customerName     = '';
     public ?int    $customerId       = null;
     public string  $paymentMethod    = 'cash';
     public float   $amountPaid       = 0;
@@ -48,14 +49,23 @@ class PosPage extends Page
     public float   $change           = 0;
     public float   $totalCommission  = 0;
 
-    // Comprobante QR — se sube como archivo temporal Livewire
+    // Comprobante QR (archivo temporal Livewire)
     public $qrReceipt = null;
 
-    // Visibilidad de selectores de sucursal/barbero y offset del bottom-nav
-    public bool $isBarbero   = false;
+    // Visibilidad según rol
+    public bool $isBarbero    = false;
     public bool $hasMobileNav = false;
 
-    // ── Egreso rápido desde el POS ──────────────────────────────
+    // ── Caja (CashRegister) ─────────────────────────────────────
+    public ?int   $openRegisterId       = null;
+    public bool   $hasOpenRegister      = false;
+    public bool   $showOpenRegisterModal  = false;
+    public bool   $showCloseRegisterModal = false;
+    public float  $openingBalance       = 0;
+    public float  $countedCash         = 0;
+    public string $closeNotes           = '';
+
+    // ── Egreso rápido ───────────────────────────────────────────
     public bool   $showExpenseModal     = false;
     public string $expenseCategory      = 'otros';
     public string $expenseDescription   = '';
@@ -76,7 +86,7 @@ class PosPage extends Page
             $this->selectedBranchId = $branches->first()->id;
         }
 
-        // Barbero: sucursal y staff se asignan automáticamente, sin elección manual
+        // Barbero: sucursal y staff se asignan automáticamente
         if ($this->isBarbero) {
             $staff = Staff::where('user_id', $user->id)->first();
             if ($staff) {
@@ -84,7 +94,124 @@ class PosPage extends Page
                 $this->selectedBranchId = $staff->branch_id;
             }
         }
+
+        $this->loadRegister();
     }
+
+    // ── Caja ────────────────────────────────────────────────────
+
+    public function loadRegister(): void
+    {
+        if (! $this->selectedBranchId) {
+            $this->openRegisterId  = null;
+            $this->hasOpenRegister = false;
+            return;
+        }
+
+        $register = CashRegister::where('branch_id', $this->selectedBranchId)
+            ->where('status', 'open')
+            ->latest('opened_at')
+            ->first();
+
+        $this->openRegisterId  = $register?->id;
+        $this->hasOpenRegister = $register !== null;
+    }
+
+    public function openRegister(): void
+    {
+        if (! $this->selectedBranchId) {
+            Notification::make()->title('Selecciona una sucursal primero')->warning()->send();
+            return;
+        }
+
+        // Si ya existe una caja abierta, la usamos
+        $existing = CashRegister::where('branch_id', $this->selectedBranchId)
+            ->where('status', 'open')
+            ->first();
+
+        if ($existing) {
+            $this->openRegisterId  = $existing->id;
+            $this->hasOpenRegister = true;
+            $this->showOpenRegisterModal = false;
+            Notification::make()->title('Caja ya estaba abierta')->info()->send();
+            return;
+        }
+
+        $register = CashRegister::create([
+            'branch_id'       => $this->selectedBranchId,
+            'user_id'         => Auth::id(),
+            'status'          => 'open',
+            'opening_balance' => $this->openingBalance,
+            'opened_at'       => now(),
+        ]);
+
+        $this->openRegisterId  = $register->id;
+        $this->hasOpenRegister = true;
+        $this->openingBalance  = 0;
+        $this->showOpenRegisterModal = false;
+
+        Notification::make()
+            ->title('¡Caja abierta!')
+            ->body('Saldo inicial: Bs ' . number_format($register->opening_balance, 2))
+            ->success()
+            ->send();
+    }
+
+    public function closeRegister(): void
+    {
+        if (! $this->openRegisterId) return;
+
+        $register = CashRegister::find($this->openRegisterId);
+        if (! $register) return;
+
+        // Calcular totales desde la apertura
+        $salesQuery = Sale::where('branch_id', $this->selectedBranchId)
+            ->where('created_at', '>=', $register->opened_at);
+
+        $cashSales = (float) (clone $salesQuery)->where('payment_method', 'cash')->sum('total');
+        $qrSales   = (float) (clone $salesQuery)->where('payment_method', 'qr')->sum('total');
+
+        $expenses = (float) Expense::where('branch_id', $this->selectedBranchId)
+            ->where('created_at', '>=', $register->opened_at)
+            ->sum('amount');
+
+        $expectedCash   = (float) $register->opening_balance + $cashSales - $expenses;
+        $cashDifference = $this->countedCash - $expectedCash;
+
+        $register->update([
+            'status'           => 'closed',
+            'closing_balance'  => $this->countedCash,
+            'total_cash_sales' => $cashSales,
+            'total_qr_sales'   => $qrSales,
+            'total_expenses'   => $expenses,
+            'notes'            => $this->closeNotes,
+            'closed_at'        => now(),
+        ]);
+
+        $this->openRegisterId         = null;
+        $this->hasOpenRegister        = false;
+        $this->showCloseRegisterModal = false;
+        $this->countedCash            = 0;
+        $this->closeNotes             = '';
+
+        Notification::make()
+            ->title('Caja cerrada')
+            ->body(
+                'Ventas efectivo: Bs ' . number_format($cashSales, 2)
+                . ' | QR: Bs ' . number_format($qrSales, 2)
+                . ' | Diferencia: Bs ' . number_format($cashDifference, 2)
+            )
+            ->success()
+            ->send();
+    }
+
+    // Cuando el cajero cambia de sucursal, recarga la caja
+    public function updatedSelectedBranchId(): void
+    {
+        $this->loadRegister();
+    }
+
+    // ── Catálogo ────────────────────────────────────────────────
 
     public function getBranches()
     {
@@ -93,9 +220,8 @@ class PosPage extends Page
 
     public function getStaffList()
     {
-        if (! $this->selectedBranchId) {
-            return collect();
-        }
+        if (! $this->selectedBranchId) return collect();
+
         return Staff::where('branch_id', $this->selectedBranchId)
             ->where('status', 'active')
             ->get();
@@ -120,6 +246,8 @@ class PosPage extends Page
             ->get();
     }
 
+    // ── Carrito ─────────────────────────────────────────────────
+
     public function addService(int $serviceId): void
     {
         if (! $this->selectedStaffId) {
@@ -127,9 +255,8 @@ class PosPage extends Page
             return;
         }
         $service = Service::find($serviceId);
-        if (! $service) {
-            return;
-        }
+        if (! $service) return;
+
         $staff      = Staff::find($this->selectedStaffId);
         $commission = $staff->calculateCommission($service->price);
         $key        = "service_{$serviceId}";
@@ -158,9 +285,8 @@ class PosPage extends Page
             return;
         }
         $product    = Product::find($productId);
-        if (! $product) {
-            return;
-        }
+        if (! $product) return;
+
         $key        = "product_{$productId}";
         $currentQty = $this->cartItems[$key]['quantity'] ?? 0;
 
@@ -196,6 +322,8 @@ class PosPage extends Page
     public function recalculate(): void
     {
         $this->subtotal        = collect($this->cartItems)->sum(fn ($i) => $i['price'] * $i['quantity']);
+        // Barbero no aplica descuentos
+        if ($this->isBarbero) $this->discount = 0;
         $this->total           = max(0, $this->subtotal - $this->discount);
         $this->totalCommission = collect($this->cartItems)->sum(fn ($i) => $i['commission']);
         $this->change          = max(0, $this->amountPaid - $this->total);
@@ -203,9 +331,8 @@ class PosPage extends Page
 
     public function lookupCustomer(): void
     {
-        if (strlen($this->customerPhone) < 6) {
-            return;
-        }
+        if (strlen($this->customerPhone) < 6) return;
+
         $customer = Customer::where('phone', $this->customerPhone)->first();
         if ($customer) {
             $this->customerName = $customer->name;
@@ -218,10 +345,12 @@ class PosPage extends Page
         }
     }
 
+    // ── Venta ───────────────────────────────────────────────────
+
     public function processSale(): void
     {
         if (empty($this->cartItems)) {
-            Notification::make()->title('El carrito esta vacio')->warning()->send();
+            Notification::make()->title('El carrito está vacío')->warning()->send();
             return;
         }
         if (! $this->selectedStaffId || ! $this->selectedBranchId) {
@@ -229,7 +358,17 @@ class PosPage extends Page
             return;
         }
 
-        // Validar comprobante QR obligatorio
+        // Verificar caja abierta
+        if (! $this->hasOpenRegister) {
+            Notification::make()
+                ->title('Caja cerrada')
+                ->body('Debe abrir caja antes de realizar ventas.')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Comprobante QR obligatorio
         if ($this->paymentMethod === 'qr' && ! $this->qrReceipt) {
             Notification::make()
                 ->title('Comprobante QR obligatorio')
@@ -241,17 +380,29 @@ class PosPage extends Page
 
         DB::beginTransaction();
         try {
-            $customer = null;
-            if ($this->customerPhone) {
+            // ── Resolver cliente ────────────────────────────────────
+            if ($this->customerId) {
+                // Cliente ya identificado por teléfono
+                $customer = Customer::find($this->customerId);
+                $customer?->increment('total_visits');
+                $customer?->update(['last_visit' => now()]);
+            } elseif ($this->customerPhone) {
+                // Teléfono ingresado pero cliente no encontrado → crear
                 $customer = Customer::firstOrCreate(
                     ['phone' => $this->customerPhone],
-                    ['name' => $this->customerName ?: 'Cliente General', 'branch_id' => $this->selectedBranchId]
+                    ['name' => filled($this->customerName) ? $this->customerName : 'Cliente General',
+                     'branch_id' => $this->selectedBranchId]
                 );
                 $customer->increment('total_visits');
                 $customer->update(['last_visit' => now()]);
+            } else {
+                // Sin datos → buscar/crear "Cliente General" para esta sucursal
+                $customer = Customer::firstOrCreate(
+                    ['name' => 'Cliente General', 'branch_id' => $this->selectedBranchId, 'phone' => null],
+                );
             }
 
-            // Guardar comprobante QR en carpeta organizada por fecha
+            // ── Comprobante QR ──────────────────────────────────────
             $qrReceiptPath = null;
             if ($this->paymentMethod === 'qr' && $this->qrReceipt) {
                 $qrReceiptPath = $this->qrReceipt->store(
@@ -260,13 +411,15 @@ class PosPage extends Page
                 );
             }
 
+            // ── Crear venta ─────────────────────────────────────────
             $sale = Sale::create([
                 'branch_id'        => $this->selectedBranchId,
-                'customer_id'      => $customer?->id,
+                'user_id'          => Auth::id(),   // columna legada NOT NULL
+                'customer_id'      => $customer->id,
                 'staff_id'         => $this->selectedStaffId,
                 'cashier_id'       => Auth::id(),
                 'subtotal'         => $this->subtotal,
-                'discount'         => $this->discount,
+                'discount'         => $this->isBarbero ? 0 : $this->discount,
                 'total'            => $this->total,
                 'total_commission' => $this->totalCommission,
                 'payment_method'   => $this->paymentMethod,
@@ -293,23 +446,30 @@ class PosPage extends Page
             }
 
             DB::commit();
+
             Notification::make()
-                ->title('Venta registrada')
-                ->body('Total: Bs ' . number_format($this->total, 2) . ' | Cambio: Bs ' . number_format($this->change, 2))
+                ->title('¡Venta registrada!')
+                ->body(
+                    'Total: Bs ' . number_format($this->total, 2)
+                    . ($this->change > 0 ? ' | Cambio: Bs ' . number_format($this->change, 2) : '')
+                )
                 ->success()
                 ->send();
+
             $this->resetCart();
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
+            Notification::make()->title('Error al registrar venta')->body($e->getMessage())->danger()->send();
         }
     }
+
+    // ── Egresos ─────────────────────────────────────────────────
 
     public function registerExpense(): void
     {
         if (! $this->expenseDescription || $this->expenseAmount <= 0) {
-            Notification::make()->title('Completa descripcion y monto')->warning()->send();
+            Notification::make()->title('Completa descripción y monto')->warning()->send();
             return;
         }
 
@@ -329,18 +489,20 @@ class PosPage extends Page
             ->success()
             ->send();
 
-        $this->showExpenseModal     = false;
-        $this->expenseDescription   = '';
-        $this->expenseAmount        = 0;
-        $this->expenseCategory      = 'otros';
+        $this->showExpenseModal   = false;
+        $this->expenseDescription = '';
+        $this->expenseAmount      = 0;
+        $this->expenseCategory    = 'otros';
         $this->expensePaymentMethod = 'cash';
     }
+
+    // ── Reset ────────────────────────────────────────────────────
 
     public function resetCart(): void
     {
         $this->cartItems       = [];
         $this->customerPhone   = '';
-        $this->customerName    = 'Cliente General';
+        $this->customerName    = '';
         $this->customerId      = null;
         $this->paymentMethod   = 'cash';
         $this->amountPaid      = 0;
@@ -350,20 +512,20 @@ class PosPage extends Page
         $this->total           = 0;
         $this->change          = 0;
         $this->totalCommission = 0;
-        $this->searchTerm      = '';
         $this->qrReceipt       = null;
     }
 
     public function updatedAmountPaid(): void { $this->recalculate(); }
     public function updatedDiscount(): void   { $this->recalculate(); }
 
-    // Cuando cambia el método de pago, limpiar campos anteriores
     public function updatedPaymentMethod(): void
     {
         $this->qrReceipt  = null;
         $this->amountPaid = 0;
         $this->change     = 0;
     }
+
+    // ── Acceso ───────────────────────────────────────────────────
 
     public static function canAccess(): bool
     {

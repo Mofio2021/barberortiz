@@ -3,6 +3,73 @@
 {{-- ═══════════════════════════════════════════════════════
      MODAL EGRESO RÁPIDO  (capa superior, fuera del grid)
      ═══════════════════════════════════════════════════════ --}}
+{{-- ═══════════════════════════════════════════════════════
+     MODAL: ABRIR CAJA
+     ═══════════════════════════════════════════════════════ --}}
+@if($showOpenRegisterModal)
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end;justify-content:center;padding:12px"
+     wire:click.self="$set('showOpenRegisterModal', false)">
+    <div style="background:#1f2937;border-radius:1rem;width:100%;max-width:22rem;padding:1.25rem;display:flex;flex-direction:column;gap:.875rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-weight:700;font-size:.95rem;color:#fff;">🟢 Abrir Caja</h3>
+            <button wire:click="$set('showOpenRegisterModal', false)"
+                style="color:#9ca3af;font-size:1.5rem;line-height:1;background:none;border:none;cursor:pointer;">&times;</button>
+        </div>
+        <div>
+            <label style="font-size:.75rem;color:#9ca3af;display:block;margin-bottom:.375rem;">Saldo Inicial en Efectivo (Bs)</label>
+            <input wire:model.live="openingBalance" type="number" min="0" step="1" placeholder="0.00"
+                style="width:100%;padding:.875rem;font-size:1.75rem;font-weight:700;text-align:center;
+                       border-radius:.75rem;border:2px solid #374151;background:#111827;color:#fff;
+                       focus:outline:none;box-sizing:border-box;"/>
+            <p style="font-size:.7rem;color:#6b7280;margin-top:.25rem;">Dinero en caja al momento de abrir el turno.</p>
+        </div>
+        <button wire:click="openRegister"
+            style="width:100%;padding:.875rem;background:#10b981;color:#fff;font-weight:700;border-radius:.875rem;
+                   border:none;cursor:pointer;font-size:1rem;touch-action:manipulation;">
+            Abrir Caja — Bs {{ number_format($openingBalance, 2) }}
+        </button>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════
+     MODAL: CERRAR CAJA
+     ═══════════════════════════════════════════════════════ --}}
+@if($showCloseRegisterModal)
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end;justify-content:center;padding:12px"
+     wire:click.self="$set('showCloseRegisterModal', false)">
+    <div style="background:#1f2937;border-radius:1rem;width:100%;max-width:22rem;padding:1.25rem;display:flex;flex-direction:column;gap:.875rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-weight:700;font-size:.95rem;color:#fff;">🔴 Cerrar Caja</h3>
+            <button wire:click="$set('showCloseRegisterModal', false)"
+                style="color:#9ca3af;font-size:1.5rem;line-height:1;background:none;border:none;cursor:pointer;">&times;</button>
+        </div>
+        <div>
+            <label style="font-size:.75rem;color:#9ca3af;display:block;margin-bottom:.375rem;">Efectivo contado físicamente (Bs)</label>
+            <input wire:model.live="countedCash" type="number" min="0" step="1" placeholder="0.00"
+                style="width:100%;padding:.875rem;font-size:1.75rem;font-weight:700;text-align:center;
+                       border-radius:.75rem;border:2px solid #374151;background:#111827;color:#fff;box-sizing:border-box;"/>
+        </div>
+        <div>
+            <label style="font-size:.75rem;color:#9ca3af;display:block;margin-bottom:.375rem;">Observaciones (opcional)</label>
+            <input wire:model="closeNotes" type="text" placeholder="Ej: Sin novedades…"
+                style="width:100%;padding:.625rem .75rem;font-size:.875rem;border-radius:.625rem;
+                       border:1px solid #374151;background:#111827;color:#fff;box-sizing:border-box;"/>
+        </div>
+        <p style="font-size:.7rem;color:#6b7280;">Al confirmar se calcularán automáticamente los totales de efectivo, QR y egresos del turno.</p>
+        <button wire:click="closeRegister"
+            wire:confirm="¿Confirmar cierre de caja?"
+            style="width:100%;padding:.875rem;background:#ef4444;color:#fff;font-weight:700;border-radius:.875rem;
+                   border:none;cursor:pointer;font-size:1rem;touch-action:manipulation;">
+            Confirmar Cierre de Caja
+        </button>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════
+     MODAL: EGRESO RÁPIDO
+     ═══════════════════════════════════════════════════════ --}}
 @if($showExpenseModal)
 <div
     class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3"
@@ -74,6 +141,35 @@
         class="lg:col-span-2 space-y-3"
         :class="tab === 'catalog' ? 'block' : 'hidden lg:block'"
     >
+        {{-- ── Estado de Caja ───────────────────────────────── --}}
+        <div style="background:#1f2937;border-radius:.875rem;padding:.875rem .75rem;
+                    display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+            @if($hasOpenRegister)
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                    <span style="width:10px;height:10px;border-radius:50%;background:#10b981;
+                                 display:inline-block;animation:pulse 2s infinite;"></span>
+                    <span style="font-size:.85rem;font-weight:600;color:#34d399;">Caja Abierta</span>
+                </div>
+                <button wire:click="$set('showCloseRegisterModal', true)"
+                    style="font-size:.75rem;font-weight:600;color:#f87171;background:none;border:none;
+                           cursor:pointer;touch-action:manipulation;padding:0;">
+                    Cerrar Caja →
+                </button>
+            @else
+                <div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0;">
+                    <span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>
+                    <span style="font-size:.85rem;font-weight:600;color:#f87171;">Caja Cerrada</span>
+                    <span style="font-size:.7rem;color:#6b7280;truncate;">· Ventas bloqueadas</span>
+                </div>
+                <button wire:click="$set('showOpenRegisterModal', true)"
+                    style="font-size:.75rem;font-weight:700;background:#10b981;color:#fff;
+                           border:none;border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;
+                           touch-action:manipulation;white-space:nowrap;flex-shrink:0;">
+                    + Abrir Caja
+                </button>
+            @endif
+        </div>
+
         {{-- Sucursal + Barbero: solo visible para cajero y admin --}}
         @if(!$isBarbero)
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
@@ -306,12 +402,15 @@
                         <span>Subtotal:</span>
                         <span>Bs {{ number_format($subtotal, 2) }}</span>
                     </div>
+                    {{-- Descuento: oculto para barbero (no pueden aplicar descuentos) --}}
+                    @if(!$isBarbero)
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-600 dark:text-gray-300">Descuento:</span>
                         <input wire:model.live="discount" type="number" min="0" step="0.5"
                             class="w-24 text-right px-2 py-1 text-sm border rounded-lg dark:bg-gray-700
                                    dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-amber-400"/>
                     </div>
+                    @endif
                     <div class="flex justify-between font-bold text-xl text-gray-900 dark:text-white pt-1">
                         <span>TOTAL:</span>
                         <span class="text-amber-500">Bs {{ number_format($total, 2) }}</span>
@@ -419,21 +518,22 @@
                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600
                        rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none"/>
 
-            {{-- BOTÓN COBRAR --}}
-            <button wire:click="processSale"
-                wire:confirm="Confirmar venta por Bs {{ number_format($total, 2) }}?"
-                class="w-full py-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white
-                       font-bold text-xl rounded-2xl shadow-lg transition-all touch-manipulation">
-                Cobrar Bs {{ number_format($total, 2) }}
-            </button>
-
-            {{-- ACCIÓN RÁPIDA: Registrar Egreso --}}
-            <button wire:click="$set('showExpenseModal', true)"
-                class="w-full py-3 border-2 border-red-300 dark:border-red-700 text-red-600
-                       dark:text-red-400 font-semibold text-sm rounded-xl hover:bg-red-50
-                       dark:hover:bg-red-950 active:scale-95 transition-all touch-manipulation">
-                + Registrar Egreso
-            </button>
+            {{-- BOTÓN COBRAR — bloqueado si la caja está cerrada --}}
+            @if($hasOpenRegister)
+                <button wire:click="processSale"
+                    wire:confirm="Confirmar venta por Bs {{ number_format($total, 2) }}?"
+                    style="width:100%;padding:1rem;background:#f59e0b;color:#fff;font-weight:700;
+                           font-size:1.25rem;border-radius:1rem;border:none;cursor:pointer;
+                           box-shadow:0 4px 12px rgba(245,158,11,.4);touch-action:manipulation;
+                           transition:transform .1s;active:transform:scale(.97);">
+                    Cobrar Bs {{ number_format($total, 2) }}
+                </button>
+            @else
+                <div style="width:100%;padding:1rem;background:#374151;color:#9ca3af;font-weight:700;
+                            font-size:1rem;border-radius:1rem;text-align:center;user-select:none;">
+                    🔒 Abre la caja para cobrar
+                </div>
+            @endif
 
         </div>
         @endif
@@ -441,13 +541,36 @@
     </div>{{-- fin panel derecho --}}
 
     {{-- ════════════════════════════════════════════════════
-         BARRA INFERIOR MÓVIL — oculta en desktop (lg:hidden)
+         FAB FLOTANTE: Registrar Egreso
+         Posicionado encima del tab bar + mobile nav
          ════════════════════════════════════════════════════ --}}
-    {{-- Tab bar de catálogo/carrito: se eleva sobre el mobile-nav cuando el usuario tiene ese nav --}}
-    <div class="fixed inset-x-0 z-40 lg:hidden bg-white dark:bg-gray-900
-                border-t border-gray-200 dark:border-gray-700 grid grid-cols-2
-                {{ $hasMobileNav ? 'bottom-14' : 'bottom-0' }}"
-         style="{{ $hasMobileNav ? 'bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px))' : '' }}">
+    <button wire:click="$set('showExpenseModal', true)"
+        title="Registrar Egreso"
+        class="lg:hidden"
+        style="position:fixed;right:16px;z-index:45;
+               width:50px;height:50px;border-radius:50%;
+               background:#ef4444;color:#fff;border:none;cursor:pointer;
+               display:flex;align-items:center;justify-content:center;
+               box-shadow:0 4px 16px rgba(239,68,68,.5);touch-action:manipulation;
+               {{ $hasMobileNav
+                   ? 'bottom:calc(7rem + env(safe-area-inset-bottom,0px));'
+                   : 'bottom:calc(3.5rem + env(safe-area-inset-bottom,0px));' }}">
+        <svg style="width:22px;height:22px;" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+        </svg>
+    </button>
+
+    {{-- ════════════════════════════════════════════════════
+         BARRA INFERIOR MÓVIL — Tab Catálogo / Carrito
+         Inline styles garantizan el layout sin npm build
+         ════════════════════════════════════════════════════ --}}
+    <div class="lg:hidden dark:bg-gray-900 dark:border-gray-700"
+         style="position:fixed;left:0;right:0;z-index:40;
+                display:grid;grid-template-columns:1fr 1fr;
+                background:white;border-top:1px solid #e5e7eb;
+                {{ $hasMobileNav
+                    ? 'bottom:calc(3.5rem + env(safe-area-inset-bottom,0px));'
+                    : 'bottom:0;' }}">
 
         <button @click="tab = 'catalog'"
             :class="tab === 'catalog'
