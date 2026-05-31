@@ -49,11 +49,21 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 'panels::head.end',
                 function (): HtmlString {
-                    $user = auth()->user();
+                    $user = \Illuminate\Support\Facades\Auth::user();
                     if ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['barbero', 'cajero'])) {
-                        return new HtmlString(
-                            '<style>@media(max-width:1023px){.fi-sidebar{display:none!important;}.fi-topbar-open-sidebar-btn{display:none!important;}}</style>'
-                        );
+                        // fi-main-sidebar es el selector correcto en Filament v3.3.x
+                        // fi-topbar-open-sidebar-btn y fi-topbar-close-sidebar-btn son los botones del hamburger
+                        return new HtmlString('<style>
+@media(max-width:1023px){
+    .fi-main-sidebar,
+    .fi-sidebar-close-overlay          { display:none!important; }
+    .fi-topbar-open-sidebar-btn,
+    .fi-topbar-close-sidebar-btn       { display:none!important; }
+    /* El wrapper del topbar debe ocupar el ancho completo sin reservar espacio para el sidebar */
+    .fi-main-ctn                       { padding-left:0!important; }
+    .fi-main-ctn-sidebar-open          { padding-left:0!important; margin-left:0!important; }
+}
+</style>');
                     }
                     return new HtmlString('');
                 },

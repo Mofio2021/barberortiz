@@ -51,6 +51,10 @@ class PosPage extends Page
     // Comprobante QR — se sube como archivo temporal Livewire
     public $qrReceipt = null;
 
+    // Visibilidad de selectores de sucursal/barbero y offset del bottom-nav
+    public bool $isBarbero   = false;
+    public bool $hasMobileNav = false;
+
     // ── Egreso rápido desde el POS ──────────────────────────────
     public bool   $showExpenseModal     = false;
     public string $expenseCategory      = 'otros';
@@ -62,13 +66,18 @@ class PosPage extends Page
 
     public function mount(): void
     {
+        $user = Auth::user();
+
+        $this->isBarbero    = $user instanceof User && $user->hasRole('barbero');
+        $this->hasMobileNav = $user instanceof User && $user->hasAnyRole(['barbero', 'cajero']);
+
         $branches = Branch::where('is_active', true)->get();
         if ($branches->count() === 1) {
             $this->selectedBranchId = $branches->first()->id;
         }
 
-        $user = Auth::user();
-        if ($user instanceof User && $user->hasRole('barbero')) {
+        // Barbero: sucursal y staff se asignan automáticamente, sin elección manual
+        if ($this->isBarbero) {
             $staff = Staff::where('user_id', $user->id)->first();
             if ($staff) {
                 $this->selectedStaffId  = $staff->id;
@@ -94,7 +103,8 @@ class PosPage extends Page
 
     public function getServices()
     {
-        return Service::where('is_active', true)
+        return Service::active()
+            ->forBranch($this->selectedBranchId)
             ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', "%{$this->searchTerm}%"))
             ->orderBy('name')
             ->get();
@@ -102,7 +112,8 @@ class PosPage extends Page
 
     public function getProducts()
     {
-        return Product::where('is_active', true)
+        return Product::active()
+            ->forBranch($this->selectedBranchId)
             ->where('stock', '>', 0)
             ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', "%{$this->searchTerm}%"))
             ->orderBy('name')

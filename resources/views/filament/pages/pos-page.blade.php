@@ -63,7 +63,8 @@
      ═══════════════════════════════════════════════════════ --}}
 <div
     x-data="{ tab: 'catalog' }"
-    class="grid grid-cols-1 lg:grid-cols-3 gap-4 pb-20 lg:pb-0"
+    class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:pb-0
+           {{ $hasMobileNav ? 'pb-36' : 'pb-20' }}"
 >
 
     {{-- ══ PANEL IZQUIERDO: Catálogo ══ --}}
@@ -71,7 +72,8 @@
         class="lg:col-span-2 space-y-3"
         :class="tab === 'catalog' ? 'block' : 'hidden lg:block'"
     >
-        {{-- Sucursal + Barbero --}}
+        {{-- Sucursal + Barbero: solo visible para cajero y admin --}}
+        @if(!$isBarbero)
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -107,6 +109,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Búsqueda + Tabs servicios/productos --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-3">
@@ -388,8 +391,11 @@
     {{-- ════════════════════════════════════════════════════
          BARRA INFERIOR MÓVIL — oculta en desktop (lg:hidden)
          ════════════════════════════════════════════════════ --}}
-    <div class="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-white dark:bg-gray-900
-                border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 safe-area-inset-bottom">
+    {{-- Tab bar de catálogo/carrito: se eleva sobre el mobile-nav cuando el usuario tiene ese nav --}}
+    <div class="fixed inset-x-0 z-40 lg:hidden bg-white dark:bg-gray-900
+                border-t border-gray-200 dark:border-gray-700 grid grid-cols-2
+                {{ $hasMobileNav ? 'bottom-14' : 'bottom-0' }}"
+         style="{{ $hasMobileNav ? 'bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px))' : '' }}">
 
         <button @click="tab = 'catalog'"
             :class="tab === 'catalog'

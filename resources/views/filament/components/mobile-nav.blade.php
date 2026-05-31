@@ -1,8 +1,7 @@
 @php
 use App\Models\User;
-$user = auth()->user();
-// Solo renderiza para barbero/cajero — admins usan el sidebar estándar
-if (! $user instanceof User || ! $user->hasAnyRole(['barbero', 'cajero'])) return;
+$navUser = auth()->user();
+$showMobileNav = $navUser instanceof User && $navUser->hasAnyRole(['barbero', 'cajero']);
 
 $nav = [
     [
@@ -43,6 +42,7 @@ $nav = [
 ];
 @endphp
 
+@if($showMobileNav)
 <nav
     class="fixed bottom-0 inset-x-0 z-50 lg:hidden
            bg-gray-900/95 backdrop-blur-sm border-t border-gray-700
@@ -53,7 +53,7 @@ $nav = [
     @php
         $active = $item['exact']
             ? request()->is($item['match'])
-            : request()->is($item['match']);
+            : request()->is($item['match'] . '*');
     @endphp
     <a href="{{ $item['url'] }}"
        class="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[3.5rem]
@@ -70,3 +70,4 @@ $nav = [
     </a>
     @endforeach
 </nav>
+@endif

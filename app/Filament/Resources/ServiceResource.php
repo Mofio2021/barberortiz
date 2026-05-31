@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class ServiceResource extends Resource
@@ -26,12 +27,46 @@ class ServiceResource extends Resource
     public static function canAccess(): bool
     {
         $user = Auth::user();
-        return $user instanceof User && $user->hasAnyRole(['super_admin', 'admin_sucursal']);
+        return $user instanceof User
+            && $user->hasAnyRole(['super_admin', 'admin_sucursal']);
+    }
+
+    // super_admin ve todo; admin_sucursal ve globales + los de su sucursal
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user  = Auth::user();
+
+        if ($user instanceof User && $user->hasRole('admin_sucursal')) {
+            $query->where(function (Builder $q) use ($user) {
+                $q->whereNull('branch_id')
+                  ->orWhere('branch_id', $user->branch_id);
+            });
+        }
+
+        return $query;
     }
 
     public static function form(Form $form): Form
     {
+        $isSuperAdmin = Auth::user()?->hasRole('super_admin');
+
         return $form->schema([
+            Forms\Components\Section::make('Sucursal')
+                ->schema([
+                    // Solo el super_admin elige sucursal.
+                    // null = global (visible en todas las sucursales).
+                    Forms\Components\Select::make('branch_id')
+                        ->label('Sucursal')
+                        ->relationship('branch', 'name')
+                        ->nullable()
+                        ->placeholder('Global (todas las sucursales)')
+                        ->searchable()
+                        ->helperText('Deja en blanco para que el servicio esté disponible en todas las sucursales.'),
+                ])
+                ->visible($isSuperAdmin)
+                ->columns(1),
+
             Forms\Components\Section::make('Datos del servicio')
                 ->schema([
                     Forms\Components\Select::make('category_id')
@@ -85,6 +120,8 @@ class ServiceResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $isSuperAdmin = Auth::user()?->hasRole('super_admin');
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -92,6 +129,14 @@ class ServiceResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->description(fn (Service $record): string => $record->category?->name ?? ''),
+
+                // Columna de sucursal: "Global" cuando branch_id es null
+                Tables\Columns\TextColumn::make('branch.name')
+                    ->label('Sucursal')
+                    ->default('Global')
+                    ->badge()
+                    ->color(fn (?string $state): string => $state === null || $state === 'Global' ? 'gray' : 'amber')
+                    ->visible($isSuperAdmin),
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Precio')
@@ -113,6 +158,13 @@ class ServiceResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Categoría')
                     ->relationship('category', 'name'),
+
+                // Filtro de sucursal solo para super_admin
+                Tables\Filters\SelectFilter::make('branch_id')
+                    ->label('Sucursal')
+                    ->relationship('branch', 'name')
+                    ->placeholder('Todas')
+                    ->visible($isSuperAdmin),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
