@@ -57,13 +57,14 @@ class PosPage extends Page
     public bool $hasMobileNav = false;
 
     // ── Caja (CashRegister) ─────────────────────────────────────
-    public ?int   $openRegisterId       = null;
-    public bool   $hasOpenRegister      = false;
+    public ?int   $openRegisterId         = null;
+    public ?int   $lastClosedRegisterId   = null;
+    public bool   $hasOpenRegister        = false;
     public bool   $showOpenRegisterModal  = false;
     public bool   $showCloseRegisterModal = false;
-    public float  $openingBalance       = 0;
-    public float  $countedCash         = 0;
-    public string $closeNotes           = '';
+    public float  $openingBalance         = 0;
+    public float  $countedCash            = 0;
+    public string $closeNotes             = '';
 
     // ── Egreso rápido ───────────────────────────────────────────
     public bool   $showExpenseModal     = false;
@@ -188,6 +189,7 @@ class PosPage extends Page
             'closed_at'        => now(),
         ]);
 
+        $this->lastClosedRegisterId   = $register->id;
         $this->openRegisterId         = null;
         $this->hasOpenRegister        = false;
         $this->showCloseRegisterModal = false;

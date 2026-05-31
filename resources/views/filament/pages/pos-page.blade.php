@@ -189,12 +189,21 @@
                     <span style="font-size:.85rem;font-weight:600;color:#f87171;">Caja Cerrada</span>
                     <span style="font-size:.7rem;color:#6b7280;truncate;">· Ventas bloqueadas</span>
                 </div>
-                <button wire:click="$set('showOpenRegisterModal', true)"
-                    style="font-size:.75rem;font-weight:700;background:#10b981;color:#fff;
-                           border:none;border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;
-                           touch-action:manipulation;white-space:nowrap;flex-shrink:0;">
-                    + Abrir Caja
-                </button>
+                <div style="display:flex;gap:.5rem;flex-shrink:0;align-items:center;">
+                    @if($lastClosedRegisterId)
+                        <a href="{{ route('ticket.cierre', $lastClosedRegisterId) }}" target="_blank"
+                            style="font-size:.7rem;font-weight:600;color:#a78bfa;background:none;border:none;
+                                   cursor:pointer;text-decoration:none;white-space:nowrap;">
+                            🖨 Ticket
+                        </a>
+                    @endif
+                    <button wire:click="$set('showOpenRegisterModal', true)"
+                        style="font-size:.75rem;font-weight:700;background:#10b981;color:#fff;
+                               border:none;border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;
+                               touch-action:manipulation;white-space:nowrap;">
+                        + Abrir Caja
+                    </button>
+                </div>
             @endif
         </div>
 

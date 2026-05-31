@@ -150,8 +150,6 @@ class SaleResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $isAdmin = Auth::user()?->hasAnyRole(['super_admin', 'admin_sucursal']);
-
         return $table
             ->columns([
                 // Columna principal apilada: cliente + fecha debajo (mobile-first)
@@ -252,6 +250,13 @@ class SaleResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('imprimir')
+                    ->label('')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->tooltip('Imprimir ticket')
+                    ->url(fn (Sale $record): string => route('ticket.venta', $record))
+                    ->openUrlInNewTab(),
                 Tables\Actions\ViewAction::make()->label(''),
                 Tables\Actions\EditAction::make()->label(''),
             ])
