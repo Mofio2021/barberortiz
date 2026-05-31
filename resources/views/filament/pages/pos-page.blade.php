@@ -69,53 +69,81 @@
 
 {{-- ═══════════════════════════════════════════════════════
      MODAL: EGRESO RÁPIDO
+     z-index:100, overflow-y:auto, max-height:90vh
+     Botón NARANJA para distinguirlo del botón COBRAR (ámbar)
      ═══════════════════════════════════════════════════════ --}}
 @if($showExpenseModal)
-<div
-    class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3"
-    wire:click.self="$set('showExpenseModal', false)"
->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3">
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;
+            display:flex;align-items:flex-end;justify-content:center;padding:0 12px 12px;"
+     wire:click.self="$set('showExpenseModal', false)">
 
-        <div class="flex items-center justify-between">
-            <h3 class="font-bold text-base text-gray-900 dark:text-white">Registrar Egreso Rapido</h3>
+    <div style="background:#1f2937;border-radius:1.125rem;width:100%;max-width:24rem;
+                overflow-y:auto;max-height:90vh;
+                padding-bottom:env(safe-area-inset-bottom, 12px);
+                display:flex;flex-direction:column;gap:.875rem;padding:1.375rem;">
+
+        {{-- Cabecera --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-weight:700;font-size:1rem;color:#fff;display:flex;align-items:center;gap:.5rem;">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f97316;"></span>
+                Registrar Egreso
+            </h3>
             <button wire:click="$set('showExpenseModal', false)"
-                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none">&times;</button>
+                style="color:#9ca3af;font-size:1.5rem;line-height:1;background:none;border:none;cursor:pointer;padding:0;">&times;</button>
         </div>
 
         {{-- Categoría --}}
-        <select wire:model="expenseCategory"
-            class="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-red-400 focus:outline-none">
-            <option value="insumos">Insumos / Productos</option>
-            <option value="servicios">Servicios (agua, luz…)</option>
-            <option value="equipo">Equipo / Herramientas</option>
-            <option value="marketing">Marketing / Publicidad</option>
-            <option value="otros">Otros</option>
-        </select>
-
-        {{-- Descripción --}}
-        <input wire:model="expenseDescription" type="text" placeholder="Descripcion del egreso…"
-            class="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-red-400 focus:outline-none"/>
-
-        {{-- Monto --}}
-        <input wire:model.live="expenseAmount" type="number" min="0" step="0.5" placeholder="0.00"
-            class="w-full px-3 py-3 text-2xl font-bold text-center rounded-lg border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-red-400 focus:outline-none"/>
-
-        {{-- Método de pago --}}
-        <div class="grid grid-cols-3 gap-2">
-            @foreach(['cash' => 'Efectivo', 'transfer' => 'Transfer.', 'card' => 'Tarjeta'] as $m => $label)
-                <button wire:click="$set('expensePaymentMethod', '{{ $m }}')"
-                    class="py-2 rounded-lg text-xs font-semibold border-2 transition-all
-                    {{ $expensePaymentMethod === $m
-                        ? 'bg-red-500 border-red-500 text-white'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300' }}">
-                    {{ $label }}
-                </button>
-            @endforeach
+        <div>
+            <label style="font-size:.72rem;color:#9ca3af;display:block;margin-bottom:.3rem;">Categoría</label>
+            <select wire:model="expenseCategory"
+                style="width:100%;padding:.625rem .75rem;font-size:.875rem;border-radius:.625rem;
+                       border:1px solid #374151;background:#111827;color:#fff;box-sizing:border-box;appearance:none;">
+                <option value="insumos">Insumos / Productos</option>
+                <option value="servicios">Servicios (agua, luz…)</option>
+                <option value="equipo">Equipo / Herramientas</option>
+                <option value="marketing">Marketing / Publicidad</option>
+                <option value="otros">Otros</option>
+            </select>
         </div>
 
+        {{-- Descripción --}}
+        <div>
+            <label style="font-size:.72rem;color:#9ca3af;display:block;margin-bottom:.3rem;">Descripción</label>
+            <input wire:model="expenseDescription" type="text" placeholder="Descripción del egreso…"
+                style="width:100%;padding:.625rem .75rem;font-size:.875rem;border-radius:.625rem;
+                       border:1px solid #374151;background:#111827;color:#fff;box-sizing:border-box;"/>
+        </div>
+
+        {{-- Monto --}}
+        <div>
+            <label style="font-size:.72rem;color:#9ca3af;display:block;margin-bottom:.3rem;">Monto (Bs)</label>
+            <input wire:model.live="expenseAmount" type="number" min="0" step="0.5" placeholder="0.00"
+                style="width:100%;padding:.875rem;font-size:2rem;font-weight:700;text-align:center;
+                       border-radius:.75rem;border:2px solid #374151;background:#111827;color:#fff;box-sizing:border-box;"/>
+        </div>
+
+        {{-- Método de pago --}}
+        <div>
+            <label style="font-size:.72rem;color:#9ca3af;display:block;margin-bottom:.4rem;">Método de pago</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;">
+                @foreach(['cash' => 'Efectivo', 'transfer' => 'Transfer.', 'card' => 'Tarjeta'] as $m => $lbl)
+                    <button wire:click="$set('expensePaymentMethod', '{{ $m }}')"
+                        style="padding:.5rem .25rem;font-size:.75rem;font-weight:600;border-radius:.5rem;
+                               border:2px solid {{ $expensePaymentMethod === $m ? '#f97316' : '#374151' }};
+                               background:{{ $expensePaymentMethod === $m ? '#f97316' : 'transparent' }};
+                               color:{{ $expensePaymentMethod === $m ? '#fff' : '#9ca3af' }};
+                               cursor:pointer;touch-action:manipulation;">
+                        {{ $lbl }}
+                    </button>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Botón guardar — NARANJA (≠ ámbar del cobrar, ≠ rojo de caja) --}}
         <button wire:click="registerExpense"
-            class="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold rounded-xl transition-all touch-manipulation">
+            style="width:100%;padding:.9rem;background:#f97316;color:#fff;font-weight:700;font-size:1rem;
+                   border-radius:.875rem;border:none;cursor:pointer;touch-action:manipulation;
+                   box-shadow:0 4px 12px rgba(249,115,22,.4);margin-top:.25rem;">
             Guardar Egreso — Bs {{ number_format($expenseAmount, 2) }}
         </button>
 

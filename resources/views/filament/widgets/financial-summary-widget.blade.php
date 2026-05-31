@@ -113,7 +113,7 @@
             </p>
             <p class="text-xs text-{{ $gananciaColor }}-400 mt-1.5">
                 Margen: {{ $margenPct }}%
-                <span class="ml-1 opacity-70">(ventas − egresos − costo)</span>
+                <span class="ml-1 opacity-70">(ventas − comisiones − egresos − costo)</span>
             </p>
         </div>
     </div>
@@ -147,21 +147,112 @@
             </div>
         </div>
 
-        {{-- Fórmula legible --}}
+        {{-- Fórmula legible actualizada --}}
         <div class="col-span-2 lg:col-span-1 flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-4 py-3">
-            <div class="text-xs text-gray-500 dark:text-gray-400 font-mono leading-relaxed">
-                <span class="text-green-600 dark:text-green-400">Bs {{ number_format($ventas, 2) }}</span>
-                <span class="mx-1">−</span>
-                <span class="text-red-500">{{ number_format($egresos, 2) }}</span>
-                <span class="mx-1">−</span>
-                <span class="text-orange-500">{{ number_format($costoProductos, 2) }}</span>
-                <span class="mx-1">=</span>
-                <span class="{{ $ganancia >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600' }} font-bold">
-                    Bs {{ number_format($ganancia, 2) }}
-                </span>
+            <div class="text-xs text-gray-500 dark:text-gray-400 font-mono leading-relaxed space-y-0.5">
+                <div>
+                    <span class="text-green-600 dark:text-green-400">{{ number_format($ventas, 2) }}</span>
+                    <span class="mx-1 text-gray-400">−</span>
+                    <span class="text-amber-500">{{ number_format($comisiones, 2) }}</span>
+                    <span class="mx-1 text-gray-400">−</span>
+                    <span class="text-red-500">{{ number_format($egresos, 2) }}</span>
+                    <span class="mx-1 text-gray-400">−</span>
+                    <span class="text-orange-500">{{ number_format($costoProductos, 2) }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">= </span>
+                    <span class="{{ $ganancia >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600' }} font-bold">
+                        Bs {{ number_format($ganancia, 2) }}
+                    </span>
+                </div>
             </div>
         </div>
     </div>
+
+    {{-- ── REPORTE POR BARBERO ───────────────────────────── --}}
+    @if($staffStats->isNotEmpty())
+    <div>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+            </svg>
+            Comisiones por Barbero · {{ $label }}
+        </h3>
+
+        {{-- Encabezados (escritorio) --}}
+        <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] gap-x-4 px-3 mb-1.5
+                    text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            <span>Barbero</span>
+            <span class="text-right">Ventas</span>
+            <span class="text-right">Facturado</span>
+            <span class="text-right">Comisión</span>
+        </div>
+
+        <div class="space-y-1.5">
+            @foreach($staffStats as $stat)
+            @php
+                $pct = $ventas > 0 ? round(($stat->total_facturado / $ventas) * 100) : 0;
+            @endphp
+            <div class="grid grid-cols-[1fr_auto] sm:grid-cols-[2fr_1fr_1fr_1fr]
+                        items-center gap-x-4 px-3 py-2.5
+                        bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+
+                {{-- Nombre + barra de participación --}}
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                        {{ $stat->name }}
+                    </p>
+                    <div class="mt-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden w-full">
+                        <div class="h-full bg-amber-400 rounded-full"
+                             style="width: {{ $pct }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-0.5 sm:hidden">
+                        {{ $stat->total_ventas }} ventas ·
+                        Bs {{ number_format($stat->total_facturado, 2) }} facturado
+                    </p>
+                </div>
+
+                {{-- Ventas (desktop) --}}
+                <div class="hidden sm:block text-right">
+                    <span class="text-sm text-gray-600 dark:text-gray-300">
+                        {{ $stat->total_ventas }}
+                    </span>
+                    <p class="text-xs text-gray-400">transacciones</p>
+                </div>
+
+                {{-- Facturado (desktop) --}}
+                <div class="hidden sm:block text-right">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Bs {{ number_format($stat->total_facturado, 2) }}
+                    </span>
+                    <p class="text-xs text-gray-400">{{ $pct }}% del total</p>
+                </div>
+
+                {{-- Comisión (siempre visible) --}}
+                <div class="text-right">
+                    <span class="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        Bs {{ number_format($stat->total_comision, 2) }}
+                    </span>
+                    <p class="text-xs text-gray-400">pendiente</p>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Total de comisiones --}}
+        <div class="mt-2 flex items-center justify-between px-3 py-2
+                    bg-amber-50 dark:bg-amber-950/40 rounded-xl
+                    border border-amber-200 dark:border-amber-800">
+            <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                Total comisiones a pagar
+            </span>
+            <span class="text-sm font-extrabold text-amber-700 dark:text-amber-300">
+                Bs {{ number_format($comisiones, 2) }}
+            </span>
+        </div>
+    </div>
+    @endif
 
 </div>
 </x-filament-widgets::widget>

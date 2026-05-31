@@ -103,9 +103,10 @@ class FinancialSummaryWidget extends Widget
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->sum('total_commission');
 
-        // ── Ganancia Neta = Ventas − Egresos − Costo Productos ───────
-        $ganancia     = $ventas - $egresos - $costoProductos;
-        $margenPct    = $ventas > 0 ? round(($ganancia / $ventas) * 100, 1) : 0;
+        // ── Ganancia Neta = Ventas − Comisiones − Egresos − Costo ───
+        // Las comisiones se descuentan porque son un costo directo de la mano de obra
+        $ganancia       = $ventas - $comisiones - $egresos - $costoProductos;
+        $margenPct      = $ventas > 0 ? round(($ganancia / $ventas) * 100, 1) : 0;
         $ticketPromedio = $cantVentas > 0 ? round($ventas / $cantVentas, 2) : 0;
 
         // ── Período anterior para comparación ────────────────────────
@@ -122,19 +123,38 @@ class FinancialSummaryWidget extends Widget
         $tendencia    = $ventas >= $ventasAnterior ? 'up' : 'down';
         $diffVentas   = $ventas - $ventasAnterior;
 
-        // ── Datos para el filtro de sucursal (solo super_admin) ───────
-        $isSuperAdmin = Auth::user()?->hasRole('super_admin');
+        // ── Datos para el filtro de sucursal ────────────────────────
+        $authUser     = Auth::user();
+        $isSuperAdmin = $authUser instanceof User && $authUser->hasRole('super_admin');
         $branches     = $isSuperAdmin ? Branch::where('is_active', true)->get() : collect();
 
         $selectedBranchName = $branchId
             ? (Branch::find($branchId)?->name ?? '—')
             : 'Todas las sucursales';
 
+        // ── Reporte por barbero: ventas + comisión acumulada ─────────
+        // Filtra por período y sucursal; ordenado por mayor comisión primero
+        $staffStats = DB::table('sales as s')
+            ->join('staff as st', 's.staff_id', '=', 'st.id')
+            ->whereBetween('s.created_at', [$from, $to])
+            ->when($branchId, fn ($q) => $q->where('s.branch_id', $branchId))
+            ->select([
+                'st.id',
+                'st.name',
+                DB::raw('COUNT(s.id)               as total_ventas'),
+                DB::raw('SUM(s.total)              as total_facturado'),
+                DB::raw('SUM(s.total_commission)   as total_comision'),
+            ])
+            ->groupBy('st.id', 'st.name')
+            ->orderByDesc('total_comision')
+            ->get();
+
         return compact(
             'ventas', 'egresos', 'costoProductos', 'comisiones',
             'ganancia', 'margenPct', 'ticketPromedio',
             'cantVentas', 'label', 'tendencia', 'diffVentas',
-            'branches', 'selectedBranchName', 'isSuperAdmin'
+            'branches', 'selectedBranchName', 'isSuperAdmin',
+            'staffStats'
         );
     }
 }
