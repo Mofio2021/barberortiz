@@ -174,59 +174,80 @@
 
     </div>
 
-    {{-- ── Ventas por Barbero ── --}}
+    {{-- ── Ventas por Barbero (detalle) ── --}}
     <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide">
-            Ventas por Barbero
-        </h3>
 
-        @forelse ($this->ventasPorBarbero as $row)
-            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 items-center">
-                {{-- Nombre --}}
-                <div class="flex items-center gap-2 sm:col-span-1">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center
-                                text-indigo-700 dark:text-indigo-300 font-bold text-xs shrink-0">
-                        {{ strtoupper(substr($row->staff?->name ?? '?', 0, 2)) }}
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                Ventas por Barbero
+            </h3>
+            {{-- Filtro barbero --}}
+            <select wire:model.live="filterStaffId"
+                class="text-sm rounded-lg border border-gray-300 dark:border-gray-600
+                       bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                       px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option value="">Todos los barberos</option>
+                @foreach ($this->staffList as $staff)
+                    <option value="{{ $staff->id }}">{{ $staff->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        {{-- Cabecera tabla --}}
+        <div class="hidden sm:grid grid-cols-4 gap-4 px-3 mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            <span>Fecha</span>
+            <span>Barbero</span>
+            <span>Tipo de Pago</span>
+            <span class="text-right">Monto</span>
+        </div>
+
+        @forelse ($this->detalleVentasBarbero as $venta)
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 py-2.5 px-3
+                        border-b border-gray-100 dark:border-gray-700 last:border-0 items-center">
+
+                {{-- Fecha --}}
+                <div>
+                    <p class="text-sm text-gray-700 dark:text-gray-200">
+                        {{ $venta->created_at->format('d/m/Y') }}
+                    </p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
+                        {{ $venta->created_at->format('H:i') }}
+                    </p>
+                </div>
+
+                {{-- Barbero --}}
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/30
+                                flex items-center justify-center text-indigo-700 dark:text-indigo-300
+                                font-bold text-xs shrink-0">
+                        {{ strtoupper(substr($venta->staff?->name ?? '?', 0, 2)) }}
                     </div>
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                        {{ $row->staff?->name ?? 'Sin asignar' }}
-                    </p>
+                    <span class="text-sm text-gray-800 dark:text-gray-200 truncate">
+                        {{ $venta->staff?->name ?? 'Sin asignar' }}
+                    </span>
                 </div>
 
-                {{-- Ventas --}}
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Ventas</p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ $row->ventas }}</p>
+                {{-- Tipo de pago --}}
+                <div>
+                    @php
+                        $metodo = match($venta->payment_method) {
+                            'cash'     => ['label' => 'Efectivo',      'class' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'],
+                            'qr'       => ['label' => 'QR',            'class' => 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'],
+                            'transfer' => ['label' => 'Transferencia', 'class' => 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'],
+                            'card'     => ['label' => 'Tarjeta',       'class' => 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'],
+                            default    => ['label' => ucfirst($venta->payment_method), 'class' => 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'],
+                        };
+                    @endphp
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $metodo['class'] }}">
+                        {{ $metodo['label'] }}
+                    </span>
                 </div>
 
-                {{-- Items --}}
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Items</p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ $row->items }}</p>
-                </div>
-
-                {{-- Total vendido --}}
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Total</p>
-                    <p class="text-sm font-bold text-green-600 dark:text-green-400">
-                        Bs. {{ number_format($row->total_vendido, 2) }}
-                    </p>
-                </div>
-
-                {{-- Comisión --}}
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Comisión</p>
-                    <p class="text-sm font-bold text-blue-600 dark:text-blue-400">
-                        Bs. {{ number_format($row->total_comision, 2) }}
-                    </p>
-                </div>
-
-                {{-- Neto --}}
-                <div class="text-center">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Neto</p>
-                    <p class="text-sm font-bold text-purple-600 dark:text-purple-400">
-                        Bs. {{ number_format($row->neto, 2) }}
-                    </p>
+                {{-- Monto --}}
+                <div class="text-right">
+                    <span class="text-sm font-bold text-green-600 dark:text-green-400">
+                        Bs. {{ number_format($venta->total, 2) }}
+                    </span>
                 </div>
             </div>
         @empty

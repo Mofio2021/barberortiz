@@ -103,19 +103,29 @@
         </div>
 
         {{-- Ganancia Neta --}}
-        @php $gananciaColor = $ganancia >= 0 ? 'blue' : 'red'; @endphp
-        <div class="bg-{{ $gananciaColor }}-50 dark:bg-{{ $gananciaColor }}-950/60 border border-{{ $gananciaColor }}-200 dark:border-{{ $gananciaColor }}-800 rounded-xl p-4">
-            <p class="text-xs font-semibold text-{{ $gananciaColor }}-600 dark:text-{{ $gananciaColor }}-400 uppercase tracking-wide mb-2">
-                Ganancia Neta
-            </p>
-            <p class="text-xl font-extrabold text-{{ $gananciaColor }}-700 dark:text-{{ $gananciaColor }}-300 leading-none">
+        @if($ganancia >= 0)
+        <div class="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+            <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Ganancia Neta</p>
+            <p class="text-xl font-extrabold text-blue-700 dark:text-blue-300 leading-none">
                 Bs {{ number_format($ganancia, 2) }}
             </p>
-            <p class="text-xs text-{{ $gananciaColor }}-400 mt-1.5">
+            <p class="text-xs text-blue-400 mt-1.5">
                 Margen: {{ $margenPct }}%
                 <span class="ml-1 opacity-70">(ventas − comisiones − egresos − costo)</span>
             </p>
         </div>
+        @else
+        <div class="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded-xl p-4">
+            <p class="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">Ganancia Neta</p>
+            <p class="text-xl font-extrabold text-red-700 dark:text-red-300 leading-none">
+                Bs {{ number_format($ganancia, 2) }}
+            </p>
+            <p class="text-xs text-red-400 mt-1.5">
+                Margen: {{ $margenPct }}%
+                <span class="ml-1 opacity-70">(ventas − comisiones − egresos − costo)</span>
+            </p>
+        </div>
+        @endif
     </div>
 
     {{-- ── MÉTRICAS SECUNDARIAS ─────────────────────────────── --}}

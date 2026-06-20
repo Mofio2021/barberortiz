@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Staff;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -21,9 +22,10 @@ class CommissionReport extends Page
     protected static ?string $navigationGroup = 'Operaciones';
     protected static ?int    $navigationSort  = 40;
 
-    public string $desde  = '';
-    public string $hasta  = '';
-    public string $periodo = 'mes';
+    public string $desde        = '';
+    public string $hasta        = '';
+    public string $periodo      = 'mes';
+    public ?int   $filterStaffId = null;
 
     public function mount(): void
     {
@@ -120,6 +122,24 @@ class CommissionReport extends Page
             ->groupBy('staff_id')
             ->orderByDesc('total_comision')
             ->get();
+    }
+
+    #[Computed]
+    public function staffList(): Collection
+    {
+        return Staff::orderBy('name')->get(['id', 'name']);
+    }
+
+    #[Computed]
+    public function detalleVentasBarbero(): Collection
+    {
+        [$from, $to] = $this->rangoDatetime();
+
+        return Sale::whereBetween('created_at', [$from, $to])
+            ->when($this->filterStaffId, fn ($q) => $q->where('staff_id', $this->filterStaffId))
+            ->with('staff:id,name')
+            ->orderByDesc('created_at')
+            ->get(['id', 'staff_id', 'payment_method', 'total', 'created_at']);
     }
 
     #[Computed]
