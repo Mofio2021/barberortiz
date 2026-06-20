@@ -123,6 +123,23 @@ class CommissionReport extends Page
     }
 
     #[Computed]
+    public function ventasPorBarbero(): Collection
+    {
+        [$from, $to] = $this->rangoDatetime();
+
+        return SaleItem::whereBetween('created_at', [$from, $to])
+            ->selectRaw('staff_id, COUNT(DISTINCT sale_id) as ventas, COUNT(*) as items, SUM(price_at_time * quantity) as total_vendido, SUM(commission_amount) as total_comision')
+            ->with('staff:id,name')
+            ->groupBy('staff_id')
+            ->orderByDesc('total_vendido')
+            ->get()
+            ->map(function ($row) {
+                $row->neto = $row->total_vendido - $row->total_comision;
+                return $row;
+            });
+    }
+
+    #[Computed]
     public function topProductos(): Collection
     {
         [$from, $to] = $this->rangoDatetime();
@@ -143,12 +160,13 @@ class CommissionReport extends Page
         $resumen           = $this->resumen;
         $ventasPorMetodo   = $this->ventasPorMetodo;
         $comisionesBarbero = $this->comisionesPorBarbero;
+        $ventasBarbero     = $this->ventasPorBarbero;
         $topProductos      = $this->topProductos;
         $desde             = $this->desde;
         $hasta             = $this->hasta;
 
         $html = view('filament.pages.reportes-pdf', compact(
-            'resumen', 'ventasPorMetodo', 'comisionesBarbero', 'topProductos', 'desde', 'hasta'
+            'resumen', 'ventasPorMetodo', 'comisionesBarbero', 'ventasBarbero', 'topProductos', 'desde', 'hasta'
         ))->render();
 
         $pdf = app('dompdf.wrapper');

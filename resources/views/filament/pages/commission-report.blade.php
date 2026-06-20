@@ -174,6 +174,66 @@
 
     </div>
 
+    {{-- ── Ventas por Barbero ── --}}
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide">
+            Ventas por Barbero
+        </h3>
+
+        @forelse ($this->ventasPorBarbero as $row)
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 items-center">
+                {{-- Nombre --}}
+                <div class="flex items-center gap-2 sm:col-span-1">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center
+                                text-indigo-700 dark:text-indigo-300 font-bold text-xs shrink-0">
+                        {{ strtoupper(substr($row->staff?->name ?? '?', 0, 2)) }}
+                    </div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {{ $row->staff?->name ?? 'Sin asignar' }}
+                    </p>
+                </div>
+
+                {{-- Ventas --}}
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">Ventas</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ $row->ventas }}</p>
+                </div>
+
+                {{-- Items --}}
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">Items</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ $row->items }}</p>
+                </div>
+
+                {{-- Total vendido --}}
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">Total</p>
+                    <p class="text-sm font-bold text-green-600 dark:text-green-400">
+                        Bs. {{ number_format($row->total_vendido, 2) }}
+                    </p>
+                </div>
+
+                {{-- Comisión --}}
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">Comisión</p>
+                    <p class="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        Bs. {{ number_format($row->total_comision, 2) }}
+                    </p>
+                </div>
+
+                {{-- Neto --}}
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">Neto</p>
+                    <p class="text-sm font-bold text-purple-600 dark:text-purple-400">
+                        Bs. {{ number_format($row->neto, 2) }}
+                    </p>
+                </div>
+            </div>
+        @empty
+            <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Sin ventas en el período.</p>
+        @endforelse
+    </div>
+
     {{-- ── Top Productos ── --}}
     <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide">

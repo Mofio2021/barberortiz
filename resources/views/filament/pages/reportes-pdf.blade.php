@@ -142,6 +142,37 @@
 
         </div>
 
+        {{-- Ventas por Barbero --}}
+        <div class="section">
+            <div class="section-title">Ventas por Barbero</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Barbero</th>
+                        <th class="text-center">Ventas</th>
+                        <th class="text-center">Items</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-right">Comisión</th>
+                        <th class="text-right">Neto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($ventasBarbero as $row)
+                        <tr>
+                            <td>{{ $row->staff?->name ?? 'Sin asignar' }}</td>
+                            <td class="text-center">{{ $row->ventas }}</td>
+                            <td class="text-center">{{ $row->items }}</td>
+                            <td class="text-right text-green font-bold">Bs. {{ number_format($row->total_vendido, 2) }}</td>
+                            <td class="text-right" style="color:#2563eb;">Bs. {{ number_format($row->total_comision, 2) }}</td>
+                            <td class="text-right" style="color:#7c3aed; font-weight:700;">Bs. {{ number_format($row->neto, 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center" style="color:#9ca3af;">Sin datos.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
         {{-- Top Productos --}}
         <div class="section">
             <div class="section-title">Top 10 Productos Vendidos</div>
