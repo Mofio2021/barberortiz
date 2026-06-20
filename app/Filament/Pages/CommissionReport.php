@@ -22,15 +22,19 @@ class CommissionReport extends Page
     protected static ?string $navigationGroup = 'Operaciones';
     protected static ?int    $navigationSort  = 40;
 
-    public string $desde        = '';
-    public string $hasta        = '';
-    public string $periodo      = 'mes';
-    public ?int   $filterStaffId = null;
+    public string $desde          = '';
+    public string $hasta          = '';
+    public string $periodo        = 'mes';
+    public ?int   $filterStaffId  = null;
+    public string $filterVentaDesde = '';
+    public string $filterVentaHasta = '';
 
     public function mount(): void
     {
         $this->desde = now()->startOfMonth()->toDateString();
         $this->hasta = today()->toDateString();
+        $this->filterVentaDesde = today()->toDateString();
+        $this->filterVentaHasta = today()->toDateString();
     }
 
     public function setPeriodo(string $p): void
@@ -133,7 +137,8 @@ class CommissionReport extends Page
     #[Computed]
     public function detalleVentasBarbero(): Collection
     {
-        [$from, $to] = $this->rangoDatetime();
+        $from = "{$this->filterVentaDesde} 00:00:00";
+        $to   = "{$this->filterVentaHasta} 23:59:59";
 
         return Sale::whereBetween('created_at', [$from, $to])
             ->when($this->filterStaffId, fn ($q) => $q->where('staff_id', $this->filterStaffId))

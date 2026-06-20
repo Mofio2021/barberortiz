@@ -177,20 +177,43 @@
     {{-- ── Ventas por Barbero (detalle) ── --}}
     <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
 
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                 Ventas por Barbero
             </h3>
-            {{-- Filtro barbero --}}
-            <select wire:model.live="filterStaffId"
-                class="text-sm rounded-lg border border-gray-300 dark:border-gray-600
-                       bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
-                       px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">Todos los barberos</option>
-                @foreach ($this->staffList as $staff)
-                    <option value="{{ $staff->id }}">{{ $staff->name }}</option>
-                @endforeach
-            </select>
+
+            <div class="flex flex-wrap items-end gap-2">
+                {{-- Filtro barbero --}}
+                <select wire:model.live="filterStaffId"
+                    class="text-sm rounded-lg border border-gray-300 dark:border-gray-600
+                           bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                           px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="">Todos los barberos</option>
+                    @foreach ($this->staffList as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->name }}</option>
+                    @endforeach
+                </select>
+
+                {{-- Filtro fecha desde --}}
+                <div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Desde</span>
+                    <input type="date" wire:model.live="filterVentaDesde"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600
+                               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                               px-2.5 py-1.5 text-sm shadow-sm
+                               focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+
+                {{-- Filtro fecha hasta --}}
+                <div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Hasta</span>
+                    <input type="date" wire:model.live="filterVentaHasta"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600
+                               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                               px-2.5 py-1.5 text-sm shadow-sm
+                               focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+            </div>
         </div>
 
         {{-- Cabecera tabla --}}
