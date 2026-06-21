@@ -152,6 +152,64 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════
+     MODAL: CANJEAR PREMIO DE FIDELIDAD
+     ═══════════════════════════════════════════════════════ --}}
+@if($showRedeemModal)
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;
+            display:flex;align-items:flex-end;justify-content:center;padding:0 12px 12px;"
+     wire:click.self="$set('showRedeemModal', false)">
+    <div style="background:#1f2937;border-radius:1.125rem;width:100%;max-width:24rem;
+                padding:1.375rem;display:flex;flex-direction:column;gap:.875rem;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-weight:700;font-size:1rem;color:#fff;display:flex;align-items:center;gap:.5rem;">
+                &#11088; Canjear Premio
+            </h3>
+            <button wire:click="$set('showRedeemModal', false)"
+                style="color:#9ca3af;font-size:1.5rem;line-height:1;background:none;border:none;cursor:pointer;">&times;</button>
+        </div>
+
+        <p style="font-size:.78rem;color:#9ca3af;">
+            El cliente tiene <strong style="color:#fbbf24;">{{ $customerLoyaltyPoints }} puntos</strong>.
+            Selecciona el premio a canjear:
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+            @foreach($this->getAvailableRewards() as $reward)
+                <button wire:click="$set('selectedRewardId', {{ $reward->id }})"
+                    style="padding:.75rem 1rem;border-radius:.75rem;border:2px solid
+                           {{ $selectedRewardId == $reward->id ? '#f59e0b' : '#374151' }};
+                           background:{{ $selectedRewardId == $reward->id ? 'rgba(245,158,11,.15)' : 'transparent' }};
+                           color:#fff;text-align:left;cursor:pointer;touch-action:manipulation;
+                           display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+                    <div>
+                        <p style="font-weight:700;font-size:.9rem;">{{ $reward->name }}</p>
+                        @if($reward->description)
+                            <p style="font-size:.72rem;color:#9ca3af;margin-top:.125rem;">{{ $reward->description }}</p>
+                        @endif
+                    </div>
+                    <span style="font-size:.72rem;font-weight:700;background:#f59e0b;color:#fff;
+                                 padding:.25rem .625rem;border-radius:.375rem;flex-shrink:0;white-space:nowrap;">
+                        {{ $reward->points_required }} pts
+                    </span>
+                </button>
+            @endforeach
+        </div>
+
+        <button wire:click="redeemReward"
+            @if(!$selectedRewardId) disabled @endif
+            style="width:100%;padding:.9rem;font-weight:700;font-size:1rem;border-radius:.875rem;border:none;
+                   cursor:{{ $selectedRewardId ? 'pointer' : 'not-allowed' }};touch-action:manipulation;
+                   background:{{ $selectedRewardId ? '#f59e0b' : '#374151' }};
+                   color:{{ $selectedRewardId ? '#fff' : '#6b7280' }};
+                   box-shadow:{{ $selectedRewardId ? '0 4px 12px rgba(245,158,11,.4)' : 'none' }};">
+            Confirmar Canje
+        </button>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════
      LAYOUT PRINCIPAL
      Desktop : grid 3 columnas (catálogo 2 + carrito 1)
      Móvil   : una columna con tabs fijos en la parte inferior
@@ -387,6 +445,40 @@
                 <p class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 font-semibold">
                     Cliente: {{ $customerName }}
                 </p>
+            @endif
+
+            {{-- Tarjeta de fidelidad (solo si el cliente está identificado) --}}
+            @if($customerId && $customerPhone)
+                <div style="margin-top:.75rem;border-radius:.625rem;padding:.625rem .75rem;
+                            background:linear-gradient(135deg,#1e3a5f 0%,#1a3a6a 100%);
+                            display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+                    <div style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="font-size:1.1rem;">&#11088;</span>
+                        <div>
+                            <p style="font-size:.7rem;color:#93c5fd;font-weight:600;text-transform:uppercase;
+                                      letter-spacing:.05em;line-height:1;">Puntos acumulados</p>
+                            <p style="font-size:1.25rem;font-weight:800;color:#fff;line-height:1.2;">
+                                {{ $customerLoyaltyPoints }}
+                                <span style="font-size:.7rem;font-weight:400;color:#93c5fd;">pts</span>
+                            </p>
+                        </div>
+                    </div>
+                    @if($customerIsBirthday)
+                        <span style="font-size:.7rem;font-weight:700;background:#fde68a;color:#92400e;
+                                     padding:.25rem .5rem;border-radius:.375rem;">
+                            🎂 ¡Cumpleaños!
+                        </span>
+                    @endif
+                    @php $redeemable = $this->getAvailableRewards(); @endphp
+                    @if($redeemable->isNotEmpty())
+                        <button wire:click="$set('showRedeemModal', true)"
+                            style="font-size:.72rem;font-weight:700;background:#f59e0b;color:#fff;
+                                   padding:.375rem .75rem;border-radius:.5rem;border:none;cursor:pointer;
+                                   touch-action:manipulation;white-space:nowrap;flex-shrink:0;">
+                            Canjear premio
+                        </button>
+                    @endif
+                </div>
             @endif
         </div>
 

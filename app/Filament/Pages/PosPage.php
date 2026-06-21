@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\Expense;
+use App\Models\LoyaltyRedemption;
+use App\Models\LoyaltyReward;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -65,6 +67,12 @@ class PosPage extends Page
     public float  $openingBalance         = 0;
     public float  $countedCash            = 0;
     public string $closeNotes             = '';
+
+    // ── Fidelización ────────────────────────────────────────────
+    public int    $customerLoyaltyPoints = 0;
+    public bool   $customerIsBirthday   = false;
+    public bool   $showRedeemModal      = false;
+    public ?int   $selectedRewardId     = null;
 
     // ── Egreso rápido ───────────────────────────────────────────
     public bool   $showExpenseModal     = false;
@@ -337,14 +345,79 @@ class PosPage extends Page
 
         $customer = Customer::where('phone', $this->customerPhone)->first();
         if ($customer) {
-            $this->customerName = $customer->name;
-            $this->customerId   = $customer->id;
+            $this->customerName          = $customer->name;
+            $this->customerId            = $customer->id;
+            $this->customerLoyaltyPoints = (int) $customer->loyalty_points;
+            $this->customerIsBirthday    = $customer->isBirthday();
+
+            $body = "Visitas: {$customer->total_visits} · Puntos: {$customer->loyalty_points}";
+            if ($this->customerIsBirthday) {
+                $body .= ' · 🎂 ¡Hoy es su cumpleaños!';
+            }
+
             Notification::make()
                 ->title("Cliente: {$customer->name}")
-                ->body("Visitas: {$customer->total_visits}")
+                ->body($body)
                 ->success()
                 ->send();
         }
+    }
+
+    // ── Fidelización ─────────────────────────────────────────────
+
+    public function getAvailableRewards(): \Illuminate\Support\Collection
+    {
+        if (! $this->customerId || $this->customerLoyaltyPoints <= 0) {
+            return collect();
+        }
+        return LoyaltyReward::active()
+            ->where('points_required', '<=', $this->customerLoyaltyPoints)
+            ->get();
+    }
+
+    public function redeemReward(): void
+    {
+        if (! $this->customerId || ! $this->selectedRewardId) {
+            return;
+        }
+
+        $customer = Customer::find($this->customerId);
+        $reward   = LoyaltyReward::find($this->selectedRewardId);
+
+        if (! $customer || ! $reward) {
+            return;
+        }
+
+        if ($customer->loyalty_points < $reward->points_required) {
+            Notification::make()
+                ->title('Puntos insuficientes')
+                ->body("Necesita {$reward->points_required} pts, tiene {$customer->loyalty_points}.")
+                ->danger()
+                ->send();
+            return;
+        }
+
+        DB::transaction(function () use ($customer, $reward) {
+            $customer->decrement('loyalty_points', $reward->points_required);
+
+            LoyaltyRedemption::create([
+                'customer_id'       => $customer->id,
+                'loyalty_reward_id' => $reward->id,
+                'points_spent'      => $reward->points_required,
+                'redeemed_by'       => Auth::id(),
+                'redeemed_at'       => now(),
+            ]);
+        });
+
+        $this->customerLoyaltyPoints = (int) $customer->fresh()->loyalty_points;
+        $this->showRedeemModal       = false;
+        $this->selectedRewardId      = null;
+
+        Notification::make()
+            ->title("Premio canjeado: {$reward->name}")
+            ->body("Quedan {$this->customerLoyaltyPoints} puntos.")
+            ->success()
+            ->send();
     }
 
     // ── Venta ───────────────────────────────────────────────────
@@ -431,6 +504,7 @@ class PosPage extends Page
                 'qr_receipt_path'  => $qrReceiptPath,
             ]);
 
+            $hasService = false;
             foreach ($this->cartItems as $item) {
                 SaleItem::create([
                     'sale_id'           => $sale->id,
@@ -445,6 +519,16 @@ class PosPage extends Page
                 if ($item['type'] === 'product') {
                     Product::find($item['id'])->decrement('stock', $item['quantity']);
                 }
+                if ($item['type'] === 'service') {
+                    $hasService = true;
+                }
+            }
+
+            // Sumar 1 punto de fidelidad si la venta incluye al menos un servicio
+            // y el cliente es identificado (no el cliente general sin teléfono)
+            if ($hasService && $this->customerId && $this->customerPhone) {
+                $customer?->increment('loyalty_points');
+                $this->customerLoyaltyPoints = (int) ($this->customerLoyaltyPoints + 1);
             }
 
             DB::commit();
@@ -502,19 +586,23 @@ class PosPage extends Page
 
     public function resetCart(): void
     {
-        $this->cartItems       = [];
-        $this->customerPhone   = '';
-        $this->customerName    = '';
-        $this->customerId      = null;
-        $this->paymentMethod   = 'cash';
-        $this->amountPaid      = 0;
-        $this->discount        = 0;
-        $this->notes           = '';
-        $this->subtotal        = 0;
-        $this->total           = 0;
-        $this->change          = 0;
-        $this->totalCommission = 0;
-        $this->qrReceipt       = null;
+        $this->cartItems             = [];
+        $this->customerPhone         = '';
+        $this->customerName          = '';
+        $this->customerId            = null;
+        $this->customerLoyaltyPoints = 0;
+        $this->customerIsBirthday    = false;
+        $this->showRedeemModal       = false;
+        $this->selectedRewardId      = null;
+        $this->paymentMethod         = 'cash';
+        $this->amountPaid            = 0;
+        $this->discount              = 0;
+        $this->notes                 = '';
+        $this->subtotal              = 0;
+        $this->total                 = 0;
+        $this->change                = 0;
+        $this->totalCommission       = 0;
+        $this->qrReceipt             = null;
     }
 
     public function updatedAmountPaid(): void { $this->recalculate(); }
