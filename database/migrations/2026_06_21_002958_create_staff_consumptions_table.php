@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('description');
             $table->decimal('amount', 10, 2);
             $table->date('consumed_at');
-            $table->foreignId('commission_payment_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('commission_payment_id')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

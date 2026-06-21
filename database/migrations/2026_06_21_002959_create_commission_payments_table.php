@@ -26,6 +26,13 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
         });
+
+        // Agregar FK de staff_consumptions a commission_payments ahora que ambas tablas existen
+        Schema::table('staff_consumptions', function (Blueprint $table) {
+            $table->foreign('commission_payment_id')
+                  ->references('id')->on('commission_payments')
+                  ->nullOnDelete();
+        });
     }
 
     /**
@@ -33,6 +40,9 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('staff_consumptions', function (Blueprint $table) {
+            $table->dropForeign(['commission_payment_id']);
+        });
         Schema::dropIfExists('commission_payments');
     }
 };
