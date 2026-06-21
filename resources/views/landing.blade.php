@@ -179,19 +179,20 @@
 
 @php
     $branchesJson = $branches->map(fn($b) => [
-        'id'     => $b->id,
-        'name'   => $b->name,
-        'staff'  => $b->staff->map(fn($s) => [
+        'id'       => $b->id,
+        'name'     => $b->name,
+        'staff'    => $b->staff->map(fn($s) => [
             'id'     => $s->id,
             'name'   => $s->name,
             'role'   => $s->role,
             'avatar' => $s->avatar ? asset('storage/'.$s->avatar) : null,
         ])->values(),
-        'photos' => $b->galleryPhotos->map(fn($p) => [
+        'photos'   => $b->galleryPhotos->map(fn($p) => [
             'id'      => $p->id,
             'url'     => asset('storage/'.$p->image_path),
             'caption' => $p->caption,
         ])->values(),
+        'services' => $servicesByBranch[$b->id] ?? collect(),
     ])->values()->toJson();
 @endphp
 
@@ -237,6 +238,19 @@ function branchApp() {
         get currentBranchName() {
             return this.currentBranch ? this.currentBranch.name : '';
         },
+
+        get currentServices() {
+            return this.currentBranch ? this.currentBranch.services : [];
+        },
+
+        serviceIcons: [
+            'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z',
+            'M5 3l14 9-14 9V3z',
+            'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+            'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
+            'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
+            'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+        ],
     }
 }
 </script>
@@ -410,45 +424,31 @@ function branchApp() {
             <h2 class="font-display text-4xl md:text-5xl font-bold text-white">Nuestros Servicios</h2>
         </div>
 
-        @php
-            $icons = [
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"/>',
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3l14 9-14 9V3z"/>',
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>',
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>',
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>',
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
-            ];
-            $cols = $services->count() <= 3 ? $services->count() : ($services->count() === 4 ? 4 : ($services->count() <= 6 ? 3 : 4));
-        @endphp
-
-        @if($services->isEmpty())
+        {{-- Servicios dinámicos según sucursal seleccionada --}}
+        <div x-show="currentServices.length === 0">
             <p class="text-center text-gray-600 text-sm">Próximamente publicaremos nuestros servicios.</p>
-        @else
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-{{ $cols }} gap-6">
-            @foreach($services as $i => $service)
-            @php $isLast = $loop->last && $loop->odd; @endphp
-            <div class="card-dark rounded-lg p-8 text-center {{ $isLast ? 'sm:col-span-2 lg:col-span-1' : '' }}"
-                 @if($loop->index === 3) style="border-color: rgba(201,168,76,0.25)" @endif>
-                <div class="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center"
-                     style="background: rgba(201,168,76,{{ $loop->index === 3 ? '0.15' : '0.1' }})">
-                    <svg class="w-7 h-7" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        {!! $icons[$loop->index % count($icons)] !!}
-                    </svg>
-                </div>
-                <h3 class="font-display text-xl font-bold text-white mb-3">{{ $service->name }}</h3>
-                @if($service->description)
-                <p class="text-gray-500 text-sm leading-relaxed mb-5">{{ $service->description }}</p>
-                @else
-                <p class="text-gray-500 text-sm leading-relaxed mb-5">&nbsp;</p>
-                @endif
-                <div class="font-display text-2xl font-bold" style="color: var(--gold)">
-                    Bs {{ number_format($service->price, 0, ',', '.') }}
-                </div>
-            </div>
-            @endforeach
         </div>
-        @endif
+
+        <div x-show="currentServices.length > 0"
+             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <template x-for="(service, index) in currentServices" :key="service.id">
+                <div class="card-dark rounded-lg p-8 text-center"
+                     :style="index === 3 ? 'border-color: rgba(201,168,76,0.25)' : ''">
+                    <div class="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center"
+                         :style="'background: rgba(201,168,76,' + (index === 3 ? '0.15' : '0.1') + ')'">
+                        <svg class="w-7 h-7" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  :d="serviceIcons[index % serviceIcons.length]"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-white mb-3" x-text="service.name"></h3>
+                    <p class="text-gray-500 text-sm leading-relaxed mb-5" x-text="service.description || ' '"></p>
+                    <div class="font-display text-2xl font-bold" style="color: var(--gold)"
+                         x-text="'Bs ' + Number(service.price).toLocaleString('es-BO', {maximumFractionDigits: 0})">
+                    </div>
+                </div>
+            </template>
+        </div>
     </div>
 </section>
 
