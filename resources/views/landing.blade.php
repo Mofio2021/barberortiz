@@ -252,6 +252,17 @@ function branchApp() {
             'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
             'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
         ],
+
+        getServiceImage(name) {
+            const n = name.toLowerCase();
+            if (n.includes('tinte'))  return '/images/services/tinte.jpg';
+            if (n.includes('lavado')) return '/images/services/lavado.jpg';
+            if (n.includes('base'))   return '/images/services/base.jpg';
+            if (n.includes('corte') && n.includes('barba')) return '/images/services/corte-barba.jpg';
+            if (n.includes('corte'))  return '/images/services/corte.jpg';
+            if (n.includes('barba'))  return '/images/services/barba.jpg';
+            return null;
+        },
     }
 }
 </script>
@@ -445,20 +456,36 @@ function branchApp() {
         <div x-show="currentServices.length > 0"
              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <template x-for="(service, index) in currentServices" :key="service.id">
-                <div class="card-dark rounded-lg p-8 text-center"
-                     :style="index === 3 ? 'border-color: rgba(201,168,76,0.25)' : ''">
-                    <div class="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center"
-                         :style="'background: rgba(201,168,76,' + (index === 3 ? '0.15' : '0.1') + ')'">
-                        <svg class="w-7 h-7" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  :d="serviceIcons[index % serviceIcons.length]"/>
-                        </svg>
+                <div class="card-dark rounded-lg overflow-hidden text-center flex flex-col">
+
+                    <template x-if="getServiceImage(service.name)">
+                        <div class="h-44 overflow-hidden flex-shrink-0">
+                            <img :src="getServiceImage(service.name)"
+                                 :alt="service.name"
+                                 class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
+                        </div>
+                    </template>
+
+                    <template x-if="!getServiceImage(service.name)">
+                        <div class="pt-8 pb-2">
+                            <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center"
+                                 style="background: rgba(201,168,76,0.1)">
+                                <svg class="w-7 h-7" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          :d="serviceIcons[index % serviceIcons.length]"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="p-6 flex flex-col flex-1">
+                        <h3 class="font-display text-xl font-bold text-white mb-2" x-text="service.name"></h3>
+                        <p class="text-gray-500 text-sm leading-relaxed mb-4 flex-1" x-text="service.description || ''"></p>
+                        <div class="font-display text-2xl font-bold mt-auto" style="color: var(--gold)"
+                             x-text="'Bs ' + Number(service.price).toLocaleString('es-BO', {maximumFractionDigits: 0})">
+                        </div>
                     </div>
-                    <h3 class="font-display text-xl font-bold text-white mb-3" x-text="service.name"></h3>
-                    <p class="text-gray-500 text-sm leading-relaxed mb-5" x-text="service.description || ' '"></p>
-                    <div class="font-display text-2xl font-bold" style="color: var(--gold)"
-                         x-text="'Bs ' + Number(service.price).toLocaleString('es-BO', {maximumFractionDigits: 0})">
-                    </div>
+
                 </div>
             </template>
         </div>
