@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: Upload via FTP
+    name: Build & Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,34 +29,37 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ${{ secrets.SERVER_PATH }}
-          protocol: ftps
-          port: 21
-          timeout: 90000
-          log-level: standard
-          exclude: |
-            **/.git*/**
-            **/node_modules/**
-            **/vendor/**
-            **/storage/framework/cache/**
-            **/storage/framework/sessions/**
-            **/storage/framework/views/**
-            **/storage/logs/**
-            **/storage/app/public/**
-            **/public/storage/**
-            **/.env*
-            **/tests/**
-            **/phpunit.xml*
-            **/.phpunit*
-            **/README*
-            **/*.md
-            **/*.log
+      - name: Deploy via lftp (auto-retry)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+        run: |
+          sudo apt-get install -q -y lftp
+          lftp -e "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            set net:timeout 60;
+            set net:max-retries 5;
+            set net:reconnect-interval-base 10;
+            set net:reconnect-interval-multiplier 1;
+            open -u $FTP_USER,$FTP_PASS $FTP_HOST;
+            mirror --reverse --verbose --no-perms --parallel=4 \
+              --exclude-glob .git* \
+              --exclude-glob node_modules/ \
+              --exclude-glob storage/framework/cache/ \
+              --exclude-glob storage/framework/sessions/ \
+              --exclude-glob storage/framework/views/ \
+              --exclude-glob storage/logs/ \
+              --exclude-glob storage/app/public/ \
+              --exclude-glob public/storage/ \
+              --exclude-glob .env* \
+              --exclude-glob tests/ \
+              --exclude-glob *.log \
+              . $SERVER_PATH;
+            quit
+          "
 
       - name: Clear Laravel cache via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -68,3 +71,4 @@ jobs:
           script: |
             cd ${{ secrets.SSH_APP_PATH }}
             php artisan optimize:clear
+            php artisan migrate --force
