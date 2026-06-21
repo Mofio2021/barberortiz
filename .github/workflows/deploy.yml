@@ -21,9 +21,6 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, pdo, pdo_mysql
 
-      - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction
-
       - name: Build assets
         run: |
           npm ci
@@ -48,6 +45,7 @@ jobs:
             mirror --reverse --verbose --no-perms --parallel=4 \
               --exclude-glob .git* \
               --exclude-glob node_modules/ \
+              --exclude-glob vendor/ \
               --exclude-glob storage/framework/cache/ \
               --exclude-glob storage/framework/sessions/ \
               --exclude-glob storage/framework/views/ \
@@ -70,5 +68,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd ${{ secrets.SSH_APP_PATH }}
+            composer install --no-dev --optimize-autoloader --no-interaction
             php artisan optimize:clear
             php artisan migrate --force
