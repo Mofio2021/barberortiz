@@ -331,10 +331,19 @@ function branchApp() {
 
         <div id="mobile-menu" class="md:hidden pb-5 pt-4 border-t" style="border-color: var(--border)">
             <div class="flex flex-col gap-4">
-                <a href="#servicios"    class="text-xs text-gray-400 tracking-widest uppercase">Servicios</a>
-                <a href="#galeria"      class="text-xs text-gray-400 tracking-widest uppercase">Galería</a>
-                <a href="#testimonios"  class="text-xs text-gray-400 tracking-widest uppercase">Opiniones</a>
-                <a href="#fidelizacion" class="text-xs text-gray-400 tracking-widest uppercase">Club VIP</a>
+                <a href="#servicios"    onclick="document.getElementById('mobile-menu').classList.remove('open')" class="text-xs text-gray-400 tracking-widest uppercase">Servicios</a>
+                <a href="#galeria"      onclick="document.getElementById('mobile-menu').classList.remove('open')" class="text-xs text-gray-400 tracking-widest uppercase">Galería</a>
+                <a href="#testimonios"  onclick="document.getElementById('mobile-menu').classList.remove('open')" class="text-xs text-gray-400 tracking-widest uppercase">Opiniones</a>
+                <a href="#fidelizacion" onclick="document.getElementById('mobile-menu').classList.remove('open')" class="text-xs text-gray-400 tracking-widest uppercase">Club VIP</a>
+                <button x-show="selectedId"
+                        @click="changeBranch(); document.getElementById('mobile-menu').classList.remove('open')"
+                        class="btn-outline px-4 py-2.5 rounded-sm text-xs uppercase tracking-widest flex items-center gap-2 w-full justify-center">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    </svg>
+                    <span x-text="currentBranchName"></span>
+                </button>
                 <a href="{{ url('/admin') }}"
                    class="btn-gold px-5 py-2.5 rounded-sm text-xs uppercase tracking-widest text-center">
                     Ingresar
