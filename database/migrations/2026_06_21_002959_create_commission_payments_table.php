@@ -11,28 +11,37 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('commission_payments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('staff_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
-            $table->date('period_start');
-            $table->date('period_end');
-            $table->decimal('gross_amount', 10, 2)->default(0);
-            $table->decimal('deductions', 10, 2)->default(0);
-            $table->decimal('net_amount', 10, 2)->default(0);
-            $table->enum('status', ['pending', 'paid'])->default('pending');
-            $table->timestamp('paid_at')->nullable();
-            $table->foreignId('paid_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->text('notes')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('commission_payments')) {
+            Schema::create('commission_payments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('staff_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
+                $table->date('period_start');
+                $table->date('period_end');
+                $table->decimal('gross_amount', 10, 2)->default(0);
+                $table->decimal('deductions', 10, 2)->default(0);
+                $table->decimal('net_amount', 10, 2)->default(0);
+                $table->enum('status', ['pending', 'paid'])->default('pending');
+                $table->timestamp('paid_at')->nullable();
+                $table->foreignId('paid_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
 
-        // Agregar FK de staff_consumptions a commission_payments ahora que ambas tablas existen
-        Schema::table('staff_consumptions', function (Blueprint $table) {
-            $table->foreign('commission_payment_id')
-                  ->references('id')->on('commission_payments')
-                  ->nullOnDelete();
-        });
+        // Agregar FK solo si aún no existe
+        $fks = collect(Schema::getConnection()
+            ->getDoctrineSchemaManager()
+            ->listTableForeignKeys('staff_consumptions'))
+            ->pluck('getName');
+
+        if (! $fks->contains(fn ($n) => str_contains($n, 'commission_payment'))) {
+            Schema::table('staff_consumptions', function (Blueprint $table) {
+                $table->foreign('commission_payment_id')
+                      ->references('id')->on('commission_payments')
+                      ->nullOnDelete();
+            });
+        }
     }
 
     /**
