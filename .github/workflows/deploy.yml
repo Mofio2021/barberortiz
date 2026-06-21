@@ -13,8 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -25,16 +24,49 @@ jobs:
       - name: Build assets
         run: npm ci && npm run build
 
-      - name: Commit built assets
+      - name: Deploy via lftp
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+          SERVER_PATH: ${{ secrets.SERVER_PATH }}
         run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
-          git add -f public/build/
-          git diff --staged --quiet || (git commit -m "ci: build assets" && git push)
+          sudo apt-get install -q -y lftp
+          lftp -e "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            set net:timeout 60;
+            set net:max-retries 5;
+            set net:reconnect-interval-base 10;
+            set net:reconnect-interval-multiplier 1;
+            open -u $FTP_USER,$FTP_PASS $FTP_HOST;
+            mirror --reverse --no-perms --parallel=4 \
+              --exclude-glob .git* \
+              --exclude-glob node_modules/ \
+              --exclude-glob vendor/ \
+              --exclude-glob storage/framework/cache/ \
+              --exclude-glob storage/framework/sessions/ \
+              --exclude-glob storage/framework/views/ \
+              --exclude-glob storage/logs/ \
+              --exclude-glob storage/app/public/ \
+              --exclude-glob public/storage/ \
+              --exclude-glob .env* \
+              --exclude-glob tests/ \
+              --exclude-glob *.log \
+              --exclude-glob deploy-hook.php \
+              . $SERVER_PATH;
+            quit
+          "
 
-      - name: Trigger deploy on server
-        run: |
-          curl -f -s -X POST \
-            -H "X-Deploy-Token: ${{ secrets.DEPLOY_SECRET }}" \
-            "${{ secrets.DEPLOY_URL }}" \
-            | head -c 3000
+      - name: Post-deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ${{ secrets.SSH_APP_PATH }}
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan optimize:clear
+            php artisan migrate --force
