@@ -5,11 +5,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 class Staff extends Model {
-    protected $fillable = ['branch_id','user_id','name','role','phone','avatar','status','payment_type','commission_type','commission_value','base_salary'];
+    protected $fillable = ['branch_id','user_id','name','role','phone','avatar','status','payment_type','commission_type','commission_value','base_salary','commission_frequency'];
     public function branch(): BelongsTo { return $this->belongsTo(Branch::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function saleItems(): HasMany { return $this->hasMany(SaleItem::class); }
-    public function sales(): HasMany { return $this->hasMany(Sale::class); }
+    public function saleItems(): HasMany        { return $this->hasMany(SaleItem::class); }
+    public function sales(): HasMany            { return $this->hasMany(Sale::class); }
+    public function consumptions(): HasMany     { return $this->hasMany(StaffConsumption::class); }
+    public function commissionPayments(): HasMany { return $this->hasMany(CommissionPayment::class); }
 
     public function calculateCommission(float $price): float {
         return $this->commission_type === 'percentage'

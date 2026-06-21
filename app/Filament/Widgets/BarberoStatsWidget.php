@@ -3,8 +3,10 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
+use App\Models\CommissionPayment;
 use App\Models\SaleItem;
 use App\Models\Staff;
+use App\Models\StaffConsumption;
 use App\Models\User;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +43,10 @@ class BarberoStatsWidget extends Widget
                 'commissionToday'     => 0,
                 'commissionYesterday' => 0,
                 'commissionMonth'     => 0,
+                'consumptionsMonth'   => 0,
+                'netMonth'            => 0,
+                'lastPayment'         => null,
+                'pendingPayments'     => collect(),
                 'citasHoy'            => collect(),
                 'citasManana'         => collect(),
             ];
@@ -59,6 +65,23 @@ class BarberoStatsWidget extends Widget
             ->whereYear('created_at', now()->year)
             ->sum('commission_amount');
 
+        $consumptionsMonth = StaffConsumption::where('staff_id', $staff->id)
+            ->whereMonth('consumed_at', now()->month)
+            ->whereYear('consumed_at', now()->year)
+            ->sum('amount');
+
+        $netMonth = max(0, $commissionMonth - $consumptionsMonth);
+
+        $lastPayment = CommissionPayment::where('staff_id', $staff->id)
+            ->where('status', 'paid')
+            ->orderByDesc('paid_at')
+            ->first();
+
+        $pendingPayments = CommissionPayment::where('staff_id', $staff->id)
+            ->where('status', 'pending')
+            ->orderByDesc('period_end')
+            ->get();
+
         $citasHoy = Appointment::with(['customer', 'service'])
             ->where('staff_id', $staff->id)
             ->whereDate('start_at', today())
@@ -76,6 +99,10 @@ class BarberoStatsWidget extends Widget
             'commissionToday',
             'commissionYesterday',
             'commissionMonth',
+            'consumptionsMonth',
+            'netMonth',
+            'lastPayment',
+            'pendingPayments',
             'citasHoy',
             'citasManana'
         );

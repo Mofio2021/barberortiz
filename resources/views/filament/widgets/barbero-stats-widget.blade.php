@@ -71,6 +71,67 @@
         </div>
     </div>
 
+    {{-- ── DESCUENTOS Y NETO ───────────────────────────── --}}
+    @if($consumptionsMonth > 0 || $pendingPayments->isNotEmpty())
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+        {{-- Consumos del mes --}}
+        <div class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-3">
+            <p class="text-xs text-red-600 dark:text-red-400 font-semibold uppercase tracking-wide mb-1">
+                Consumos este mes (descuentos)
+            </p>
+            <p class="text-lg font-extrabold text-red-700 dark:text-red-300">
+                - Bs {{ number_format((float) $consumptionsMonth, 2) }}
+            </p>
+        </div>
+
+        {{-- Neto a cobrar --}}
+        <div class="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-xl p-3">
+            <p class="text-xs text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide mb-1">
+                Neto a cobrar este mes
+            </p>
+            <p class="text-lg font-extrabold text-green-700 dark:text-green-300">
+                Bs {{ number_format((float) $netMonth, 2) }}
+            </p>
+        </div>
+
+    </div>
+    @endif
+
+    {{-- ── PAGOS PENDIENTES ─────────────────────────────── --}}
+    @if($pendingPayments->isNotEmpty())
+    <div>
+        <p class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">
+            Pagos pendientes de recibir
+        </p>
+        <div class="space-y-1.5">
+            @foreach($pendingPayments as $pago)
+            <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+                <span class="text-xs text-amber-700 dark:text-amber-300">
+                    {{ $pago->period_start->format('d/m') }} — {{ $pago->period_end->format('d/m/Y') }}
+                </span>
+                <span class="text-sm font-bold text-amber-800 dark:text-amber-200">
+                    Bs {{ number_format((float) $pago->net_amount, 2) }}
+                </span>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- ── ÚLTIMO PAGO RECIBIDO ────────────────────────── --}}
+    @if($lastPayment)
+    <div class="px-3 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
+        <div>
+            <p class="text-xs text-blue-500 dark:text-blue-400 font-semibold">Último pago recibido</p>
+            <p class="text-xs text-blue-400">{{ $lastPayment->paid_at->format('d/m/Y') }}</p>
+        </div>
+        <p class="text-base font-extrabold text-blue-700 dark:text-blue-300">
+            Bs {{ number_format((float) $lastPayment->net_amount, 2) }}
+        </p>
+    </div>
+    @endif
+
     {{-- ── CITAS HOY ────────────────────────────────────── --}}
     <div>
         <div class="flex items-center justify-between mb-2">

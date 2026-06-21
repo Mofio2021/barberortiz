@@ -89,8 +89,19 @@ class StaffResource extends Resource
                         ->numeric()
                         ->required()
                         ->default(50.00),
+
+                    Forms\Components\Select::make('commission_frequency')
+                        ->label('Frecuencia de pago')
+                        ->options([
+                            'daily'     => 'Diario',
+                            'weekly'    => 'Semanal',
+                            'biweekly'  => 'Quincenal',
+                            'monthly'   => 'Mensual',
+                        ])
+                        ->required()
+                        ->default('monthly'),
                 ])
-                ->columns(3),
+                ->columns(4),
 
             Forms\Components\Section::make('Cuenta de acceso al sistema')
                 ->description('Credenciales que usará el staff para ingresar al panel.')
