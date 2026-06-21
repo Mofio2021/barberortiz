@@ -116,13 +116,11 @@ class StaffConsumptionResource extends Resource
                     ->date('d/m/Y')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('commission_payment_id')
+                Tables\Columns\TextColumn::make('commission_payment_id')
                     ->label('Estado')
+                    ->badge()
                     ->formatStateUsing(fn ($state) => $state ? 'Descontado' : 'Pendiente')
-                    ->colors([
-                        'success' => fn ($state) => $state !== null,
-                        'warning' => fn ($state) => $state === null,
-                    ]),
+                    ->color(fn ($state) => $state ? 'success' : 'warning'),
             ])
             ->defaultSort('consumed_at', 'desc')
             ->filters([

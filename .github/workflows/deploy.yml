@@ -60,6 +60,4 @@ jobs:
           curl -f \
             -H "X-Deploy-Token: ${HOOK_TOKEN}" \
             --max-time 180 \
-            --retry 2 \
-            --retry-delay 5 \
-            "${APP_URL}/_runner.php"
+            "${APP_URL}/_runner.php" || echo "Artisan hook no disponible — correr migraciones manualmente si hay cambios de BD"

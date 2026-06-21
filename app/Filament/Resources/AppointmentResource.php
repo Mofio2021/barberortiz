@@ -121,14 +121,15 @@ class AppointmentResource extends Resource
                     ->sortable(),
 
                 // Estado con badge de color
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'warning' => 'pendiente',
-                        'success' => 'confirmada',
-                        'primary' => 'completada',
-                        'danger'  => 'cancelada',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'confirmada' => 'success',
+                        'completada' => 'primary',
+                        'cancelada'  => 'danger',
+                        default      => 'warning',
+                    })
                     ->formatStateUsing(fn (string $state): string => ucfirst($state)),
             ])
             ->defaultSort('start_at', 'asc')

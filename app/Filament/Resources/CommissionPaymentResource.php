@@ -118,17 +118,18 @@ class CommissionPaymentResource extends Resource
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
+                    ->badge()
                     ->formatStateUsing(fn ($state) => match($state) {
                         'pending' => 'Pendiente',
                         'paid'    => 'Pagado',
                         default   => $state,
                     })
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'paid',
-                    ]),
+                    ->color(fn ($state) => match($state) {
+                        'paid'  => 'success',
+                        default => 'warning',
+                    }),
 
                 Tables\Columns\TextColumn::make('paid_at')
                     ->label('Pagado el')
