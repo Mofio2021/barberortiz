@@ -261,7 +261,9 @@ function branchApp() {
 <div x-show="showSelector" x-cloak class="branch-overlay">
     <div style="max-width:560px; width:100%; padding:2rem">
         <div class="text-center mb-10">
-            <p class="text-xs tracking-[0.3em] uppercase mb-3" style="color: var(--gold)">Arte & Navaja</p>
+            <div class="w-20 h-20 rounded-full overflow-hidden bg-white mx-auto mb-5" style="padding:2px">
+                <img src="{{ asset('images/logo.jpeg') }}" alt="Arte & Navaja" class="w-full h-full object-contain">
+            </div>
             <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-3">¿Cuál sucursal te queda más cerca?</h2>
             <p class="text-gray-600 text-sm">Elegí y personalizamos tu experiencia.</p>
         </div>
@@ -295,9 +297,9 @@ function branchApp() {
         <div class="flex items-center justify-between h-16">
 
             <a href="#" class="flex items-center gap-2.5">
-                <svg class="w-7 h-7 flex-shrink-0" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M8 6h10v10M6 12c0 3.314 2.686 6 6 6"/>
-                </svg>
+                <div class="w-9 h-9 rounded-full overflow-hidden bg-white flex-shrink-0 flex items-center justify-center" style="padding:1px">
+                    <img src="{{ asset('images/logo.jpeg') }}" alt="Arte & Navaja" class="w-full h-full object-contain">
+                </div>
                 <span class="font-display text-xl font-bold" style="color: var(--gold)">Arte & Navaja</span>
             </a>
 
@@ -366,9 +368,10 @@ function branchApp() {
     <div class="max-w-7xl mx-auto px-6 lg:px-10 py-36 md:py-0 w-full">
         <div class="max-w-2xl">
 
-            <div class="flex items-center gap-4 mb-7 anim anim-d1">
-                <div class="gold-line"></div>
-                <span class="text-xs tracking-[0.35em] uppercase" style="color: var(--gold)">Barbería Premium</span>
+            <div class="mb-8 anim anim-d1">
+                <div class="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-white" style="padding:3px">
+                    <img src="{{ asset('images/logo.jpeg') }}" alt="Arte & Navaja" class="w-full h-full object-contain">
+                </div>
             </div>
 
             <h1 class="font-display font-black leading-none mb-6 anim anim-d2"
@@ -747,11 +750,10 @@ function branchApp() {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
 
             <div>
-                <div class="flex items-center gap-2.5 mb-4">
-                    <svg class="w-6 h-6" style="color: var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M6 18L18 6M8 6h10v10M6 12c0 3.314 2.686 6 6 6"/>
-                    </svg>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0" style="padding:1px">
+                        <img src="{{ asset('images/logo.jpeg') }}" alt="Arte & Navaja" class="w-full h-full object-contain">
+                    </div>
                     <span class="font-display text-lg font-bold" style="color: var(--gold)">Arte & Navaja</span>
                 </div>
                 <p class="text-gray-700 text-sm leading-relaxed">
