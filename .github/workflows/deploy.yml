@@ -29,16 +29,16 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy via FTP
+      - name: Deploy via SFTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
           server-dir: ${{ secrets.SERVER_PATH }}
-          protocol: ftps
-          port: 21
-          timeout: 90000
+          protocol: sftp
+          port: ${{ secrets.SSH_PORT }}
+          timeout: 120000
           log-level: standard
           clean: false
           exclude: |
