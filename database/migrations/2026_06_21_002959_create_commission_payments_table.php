@@ -29,13 +29,16 @@ return new class extends Migration
             });
         }
 
-        // Agregar FK solo si aún no existe
-        $fks = collect(Schema::getConnection()
-            ->getDoctrineSchemaManager()
-            ->listTableForeignKeys('staff_consumptions'))
-            ->pluck('getName');
+        // Agregar FK solo si aún no existe (compatible con Laravel 10 y 11)
+        $hasFk = \DB::select("
+            SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'staff_consumptions'
+              AND COLUMN_NAME = 'commission_payment_id'
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+        ");
 
-        if (! $fks->contains(fn ($n) => str_contains($n, 'commission_payment'))) {
+        if (empty($hasFk)) {
             Schema::table('staff_consumptions', function (Blueprint $table) {
                 $table->foreign('commission_payment_id')
                       ->references('id')->on('commission_payments')
