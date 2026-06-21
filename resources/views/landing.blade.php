@@ -190,8 +190,8 @@
                 Donde el estilo se convierte en arte.
             </p>
             <p class="text-sm text-gray-600 mb-10 max-w-md leading-relaxed anim anim-d2">
-                Cortes clásicos, afeitados de navaja y diseño de barba con precisión milimétrica.
-                Tu imagen, nuestra pasión.
+                Cortes precisos, barba definida y el arte del afeitado clásico.
+                Tu estilo, nuestra firma.
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 anim anim-d3">
@@ -275,7 +275,7 @@
                 <p class="text-gray-500 text-sm leading-relaxed mb-5">&nbsp;</p>
                 @endif
                 <div class="font-display text-2xl font-bold" style="color: var(--gold)">
-                    $ {{ number_format($service->price, 0, ',', '.') }}
+                    Bs {{ number_format($service->price, 0, ',', '.') }}
                 </div>
             </div>
             @endforeach
