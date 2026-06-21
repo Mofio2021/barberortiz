@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Arte & Navaja — Barbería Premium. Cortes clásicos y modernos con la mejor atención.">
     <title>Arte & Navaja | Barbería Premium</title>
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpeg') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -367,12 +368,6 @@ function branchApp() {
 
     <div class="max-w-7xl mx-auto px-6 lg:px-10 py-36 md:py-0 w-full">
         <div class="max-w-2xl">
-
-            <div class="mb-8 anim anim-d1">
-                <div class="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-white" style="padding:3px">
-                    <img src="{{ asset('images/logo.jpeg') }}" alt="Arte & Navaja" class="w-full h-full object-contain">
-                </div>
-            </div>
 
             <h1 class="font-display font-black leading-none mb-6 anim anim-d2"
                 style="font-size: clamp(3.5rem, 10vw, 7rem)">
