@@ -26,33 +26,33 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy via rsync over SSH
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PASS: ${{ secrets.SSH_PASSWORD }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_APP_PATH: ${{ secrets.SSH_APP_PATH }}
+      - name: Empaquetar archivos (excluir vendor, node_modules, etc.)
         run: |
-          sudo apt-get install -q -y sshpass rsync
-          sshpass -p "$SSH_PASS" rsync -az --delete \
-            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
-            --exclude='.git' \
-            --exclude='node_modules/' \
-            --exclude='vendor/' \
-            --exclude='storage/framework/cache/' \
-            --exclude='storage/framework/sessions/' \
-            --exclude='storage/framework/views/' \
-            --exclude='storage/logs/' \
-            --exclude='storage/app/public/' \
-            --exclude='public/storage/' \
-            --exclude='.env' \
-            --exclude='.env.*' \
-            --exclude='tests/' \
-            --exclude='*.log' \
-            . "$SSH_USER@$SSH_HOST:$SSH_APP_PATH"
+          tar --exclude='.git' \
+              --exclude='node_modules' \
+              --exclude='vendor' \
+              --exclude='storage/framework/cache' \
+              --exclude='storage/framework/sessions' \
+              --exclude='storage/framework/views' \
+              --exclude='storage/logs' \
+              --exclude='storage/app/public' \
+              --exclude='public/storage' \
+              --exclude='.env' \
+              --exclude='.env.*' \
+              --exclude='tests' \
+              -czf /tmp/deploy.tar.gz .
 
-      - name: Clear Laravel cache via SSH
+      - name: Subir archivo via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "/tmp/deploy.tar.gz"
+          target: "/tmp/"
+
+      - name: Extraer y activar en servidor via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -60,6 +60,8 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            tar -xzf /tmp/deploy.tar.gz -C ${{ secrets.SSH_APP_PATH }}
+            rm /tmp/deploy.tar.gz
             cd ${{ secrets.SSH_APP_PATH }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan optimize:clear

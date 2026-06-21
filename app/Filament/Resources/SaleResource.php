@@ -35,6 +35,29 @@ class SaleResource extends Resource
             && $user->hasAnyRole(['super_admin', 'admin_sucursal', 'cajero', 'barbero']);
     }
 
+    // Si la sucursal ya tiene un admin_sucursal, solo él (y super_admin/cajero) registran ventas.
+    // Si la sucursal NO tiene admin_sucursal (ej. La Villa), los barberos también pueden.
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        if (! $user instanceof User) return false;
+
+        if ($user->hasAnyRole(['super_admin', 'admin_sucursal', 'cajero'])) return true;
+
+        if ($user->hasRole('barbero')) {
+            $branchId = Staff::where('user_id', $user->id)->value('branch_id');
+            if (! $branchId) return false;
+
+            $branchHasAdmin = User::whereHas('roles', fn (Builder $q) => $q->where('name', 'admin_sucursal'))
+                ->where('branch_id', $branchId)
+                ->exists();
+
+            return ! $branchHasAdmin;
+        }
+
+        return false;
+    }
+
     // Barbero solo ve sus propias ventas y solo de hoy.
     // Cajero también queda restringido a ventas de hoy.
     public static function getEloquentQuery(): Builder
