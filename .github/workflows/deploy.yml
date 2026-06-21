@@ -26,38 +26,31 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy via lftp (auto-retry)
+      - name: Deploy via rsync over SSH
         env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
-          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASS: ${{ secrets.SSH_PASSWORD }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_APP_PATH: ${{ secrets.SSH_APP_PATH }}
         run: |
-          sudo apt-get install -q -y lftp
-          lftp -e "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
-            set net:timeout 60;
-            set net:max-retries 5;
-            set net:reconnect-interval-base 10;
-            set net:reconnect-interval-multiplier 1;
-            open -u $FTP_USER,$FTP_PASS $FTP_HOST;
-            mirror --reverse --verbose --no-perms --parallel=4 \
-              --exclude-glob .git* \
-              --exclude-glob node_modules/ \
-              --exclude-glob vendor/ \
-              --exclude-glob storage/framework/cache/ \
-              --exclude-glob storage/framework/sessions/ \
-              --exclude-glob storage/framework/views/ \
-              --exclude-glob storage/logs/ \
-              --exclude-glob storage/app/public/ \
-              --exclude-glob public/storage/ \
-              --exclude-glob .env* \
-              --exclude-glob tests/ \
-              --exclude-glob *.log \
-              . $SERVER_PATH;
-            quit
-          "
+          sudo apt-get install -q -y sshpass rsync
+          sshpass -p "$SSH_PASS" rsync -az --delete \
+            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+            --exclude='.git' \
+            --exclude='node_modules/' \
+            --exclude='vendor/' \
+            --exclude='storage/framework/cache/' \
+            --exclude='storage/framework/sessions/' \
+            --exclude='storage/framework/views/' \
+            --exclude='storage/logs/' \
+            --exclude='storage/app/public/' \
+            --exclude='public/storage/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='tests/' \
+            --exclude='*.log' \
+            . "$SSH_USER@$SSH_HOST:$SSH_APP_PATH"
 
       - name: Clear Laravel cache via SSH
         uses: appleboy/ssh-action@v1.0.3
