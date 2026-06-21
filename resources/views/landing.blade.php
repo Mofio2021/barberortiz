@@ -7,6 +7,7 @@
     <title>Arte & Navaja | Barbería Premium</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -21,6 +22,7 @@
         }
 
         html { scroll-behavior: smooth; }
+        [x-cloak] { display: none !important; }
 
         body {
             background-color: var(--dark);
@@ -103,6 +105,66 @@
         #mobile-menu { display: none; }
         #mobile-menu.open { display: block; }
 
+        /* Branch selector overlay */
+        .branch-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(8,8,8,0.97);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .branch-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 200px;
+        }
+        .branch-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(201,168,76,0.15);
+        }
+
+        /* Barber card */
+        .barber-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            text-align: center;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .barber-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(201,168,76,0.4);
+        }
+        .barber-avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--gold);
+            margin: 0 auto;
+        }
+        .barber-avatar-placeholder {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: rgba(201,168,76,0.1);
+            border: 3px solid var(--gold);
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(28px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -113,7 +175,103 @@
         .anim-d3 { animation-delay: 0.4s; opacity: 0; }
     </style>
 </head>
-<body>
+<body x-data="branchApp()" x-init="init()">
+
+@php
+    $branchesJson = $branches->map(fn($b) => [
+        'id'     => $b->id,
+        'name'   => $b->name,
+        'staff'  => $b->staff->map(fn($s) => [
+            'id'     => $s->id,
+            'name'   => $s->name,
+            'role'   => $s->role,
+            'avatar' => $s->avatar ? asset('storage/'.$s->avatar) : null,
+        ])->values(),
+        'photos' => $b->galleryPhotos->map(fn($p) => [
+            'id'      => $p->id,
+            'url'     => asset('storage/'.$p->image_path),
+            'caption' => $p->caption,
+        ])->values(),
+    ])->values()->toJson();
+@endphp
+
+<script>
+function branchApp() {
+    return {
+        branches: @json($branches->map(fn($b) => ['id'=>$b->id,'name'=>$b->name])->values()),
+        allData:  {!! $branchesJson !!},
+        selectedId: null,
+        showSelector: false,
+
+        init() {
+            const saved = localStorage.getItem('arte_navaja_branch');
+            if (saved) {
+                this.selectedId = parseInt(saved);
+            } else {
+                this.showSelector = true;
+            }
+        },
+
+        selectBranch(id) {
+            this.selectedId = id;
+            localStorage.setItem('arte_navaja_branch', id);
+            this.showSelector = false;
+        },
+
+        changeBranch() {
+            this.showSelector = true;
+        },
+
+        get currentBranch() {
+            return this.allData.find(b => b.id === this.selectedId) || null;
+        },
+
+        get currentStaff() {
+            return this.currentBranch ? this.currentBranch.staff : [];
+        },
+
+        get currentPhotos() {
+            return this.currentBranch ? this.currentBranch.photos : [];
+        },
+
+        get currentBranchName() {
+            return this.currentBranch ? this.currentBranch.name : '';
+        },
+    }
+}
+</script>
+
+<!-- ================================================
+     SELECTOR DE SUCURSAL (overlay)
+================================================ -->
+<div x-show="showSelector" x-cloak class="branch-overlay">
+    <div style="max-width:560px; width:100%; padding:2rem">
+        <div class="text-center mb-10">
+            <p class="text-xs tracking-[0.3em] uppercase mb-3" style="color: var(--gold)">Arte & Navaja</p>
+            <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-3">¿Cuál sucursal te queda más cerca?</h2>
+            <p class="text-gray-600 text-sm">Elegí y personalizamos tu experiencia.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-6 justify-center">
+            @foreach($branches as $branch)
+            <div class="branch-card" @click="selectBranch({{ $branch->id }})">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                     style="background: rgba(201,168,76,0.12)">
+                    <svg class="w-8 h-8" style="color:var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <div class="font-display text-lg font-bold text-white mb-1">{{ $branch->name }}</div>
+                @if($branch->address)
+                <div class="text-gray-600 text-xs">{{ $branch->address }}</div>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
 
 <!-- ================================================
      NAVBAR
@@ -131,9 +289,19 @@
 
             <div class="hidden md:flex items-center gap-8">
                 <a href="#servicios"   class="text-xs text-gray-400 hover:text-white transition-colors tracking-[0.15em] uppercase">Servicios</a>
+                <a href="#barberos"   class="text-xs text-gray-400 hover:text-white transition-colors tracking-[0.15em] uppercase">Barberos</a>
                 <a href="#galeria"     class="text-xs text-gray-400 hover:text-white transition-colors tracking-[0.15em] uppercase">Galería</a>
                 <a href="#testimonios" class="text-xs text-gray-400 hover:text-white transition-colors tracking-[0.15em] uppercase">Opiniones</a>
                 <a href="#fidelizacion" class="text-xs text-gray-400 hover:text-white transition-colors tracking-[0.15em] uppercase">Club VIP</a>
+                <button @click="changeBranch()"
+                        x-show="selectedId"
+                        class="btn-outline px-3 py-2 rounded-sm text-xs uppercase tracking-widest flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    </svg>
+                    <span x-text="currentBranchName"></span>
+                </button>
                 <a href="{{ url('/admin') }}"
                    class="btn-gold px-5 py-2 rounded-sm text-xs uppercase tracking-widest">
                     Ingresar
@@ -285,9 +453,56 @@
 </section>
 
 <!-- ================================================
+     BARBEROS
+================================================ -->
+<section id="barberos" class="py-24" style="background-color: var(--dark)">
+    <div class="max-w-7xl mx-auto px-6 lg:px-10">
+
+        <div class="text-center mb-16">
+            <div class="flex items-center justify-center gap-4 mb-4">
+                <div class="gold-line"></div>
+                <span class="text-xs tracking-[0.3em] uppercase" style="color: var(--gold)">Nuestro equipo</span>
+                <div class="gold-line"></div>
+            </div>
+            <h2 class="font-display text-4xl md:text-5xl font-bold text-white">
+                Los Barberos de <span x-text="currentBranchName" class="gold-gradient-text"></span>
+            </h2>
+        </div>
+
+        <div x-show="currentStaff.length > 0"
+             class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            <template x-for="barber in currentStaff" :key="barber.id">
+                <div class="barber-card p-6">
+                    <div class="mb-4">
+                        <template x-if="barber.avatar">
+                            <img :src="barber.avatar" :alt="barber.name" class="barber-avatar">
+                        </template>
+                        <template x-if="!barber.avatar">
+                            <div class="barber-avatar-placeholder">
+                                <svg class="w-10 h-10" style="color:var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="font-display text-lg font-bold text-white mb-1" x-text="barber.name"></div>
+                    <div class="text-xs uppercase tracking-wider" style="color:var(--gold)" x-text="barber.role === 'barbero' ? 'Barbero' : 'Estilista'"></div>
+                </div>
+            </template>
+        </div>
+
+        <div x-show="currentStaff.length === 0" class="text-center text-gray-600 text-sm">
+            Seleccioná una sucursal para ver el equipo.
+        </div>
+
+    </div>
+</section>
+
+<!-- ================================================
      GALERÍA
 ================================================ -->
-<section id="galeria" class="py-24" style="background-color: var(--dark)">
+<section id="galeria" class="py-24" style="background-color: #0d0d0d">
     <div class="max-w-7xl mx-auto px-6 lg:px-10">
 
         <div class="text-center mb-16">
@@ -298,27 +513,30 @@
             </div>
             <h2 class="font-display text-4xl md:text-5xl font-bold text-white">Galería</h2>
             <p class="text-gray-600 text-sm mt-4 max-w-md mx-auto">
-                Cada corte cuenta una historia. Acá van algunos de nuestros trabajos más destacados.
+                Cada corte cuenta una historia. Trabajos reales de nuestros barberos.
             </p>
         </div>
 
-        {{-- Grid galería: 2 cols mobile / 3 cols desktop --}}
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div class="gallery-item rounded-lg aspect-square" style="background: #161616; border: 1px solid var(--border)">
-                <img src="https://picsum.photos/seed/b1/600/600" alt="Corte de cabello" class="w-full h-full object-cover rounded-lg">
-            </div>
-            <div class="gallery-item rounded-lg aspect-square" style="background: #161616; border: 1px solid var(--border)">
-                <img src="https://picsum.photos/seed/b2/600/600" alt="Diseño de barba" class="w-full h-full object-cover rounded-lg">
-            </div>
-            <div class="gallery-item rounded-lg aspect-square" style="background: #161616; border: 1px solid var(--border)">
-                <img src="https://picsum.photos/seed/b3/600/600" alt="Afeitado" class="w-full h-full object-cover rounded-lg">
-            </div>
-            <div class="gallery-item rounded-lg aspect-square" style="background: #161616; border: 1px solid var(--border)">
-                <img src="https://picsum.photos/seed/b4/600/600" alt="Corte moderno" class="w-full h-full object-cover rounded-lg">
-            </div>
-            <div class="gallery-item rounded-lg col-span-2 overflow-hidden" style="background: #161616; border: 1px solid var(--border); aspect-ratio: 2/1">
-                <img src="https://picsum.photos/seed/b5/1200/600" alt="Interior de la barbería" class="w-full h-full object-cover rounded-lg">
-            </div>
+        {{-- Fotos reales desde DB, filtradas por sucursal --}}
+        <div x-show="currentPhotos.length > 0"
+             class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <template x-for="(photo, index) in currentPhotos" :key="photo.id">
+                <div class="gallery-item rounded-lg overflow-hidden"
+                     :class="index === currentPhotos.length - 1 && currentPhotos.length % 2 !== 0 ? 'col-span-2 md:col-span-1' : ''"
+                     style="aspect-ratio:1/1; background:#161616; border:1px solid var(--border)">
+                    <img :src="photo.url" :alt="photo.caption || 'Trabajo de barbería'"
+                         class="w-full h-full object-cover">
+                </div>
+            </template>
+        </div>
+
+        <div x-show="currentPhotos.length === 0"
+             class="text-center py-16" style="border: 1px dashed var(--border); border-radius: 0.75rem">
+            <svg class="w-12 h-12 mx-auto mb-4 opacity-20" style="color:var(--gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-gray-700 text-sm">Las fotos aparecerán aquí una vez que los barberos las suban desde el panel.</p>
         </div>
 
         <p class="text-center text-gray-700 text-xs mt-8">
