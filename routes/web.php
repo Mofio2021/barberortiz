@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TicketController;
+use App\Models\Service;
 
 Route::get('/', function () {
-    return view('welcome');
+    $services = Service::active()->orderBy('name')->get();
+    return view('landing', compact('services'));
 });
 
 Route::get('/login', fn() => redirect()->route('filament.admin.auth.login'))->name('login');
