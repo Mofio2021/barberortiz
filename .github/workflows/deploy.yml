@@ -30,31 +30,49 @@ jobs:
           HOOK_TOKEN=$(openssl rand -hex 32)
           sed "s/__HOOK_TOKEN__/${HOOK_TOKEN}/" .github/deploy-runner.php > /tmp/_runner.php
 
-          lftp -e "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
-            set net:timeout 60;
-            set net:max-retries 5;
-            set net:reconnect-interval-base 10;
-            set net:reconnect-interval-multiplier 1;
-            open -u $FTP_USER,$FTP_PASS $FTP_HOST;
-            mirror --reverse --no-perms --parallel=4 \
-              --exclude-glob .git* \
-              --exclude-glob node_modules/ \
-              --exclude-glob vendor/ \
-              --exclude-glob storage/framework/cache/ \
-              --exclude-glob storage/framework/sessions/ \
-              --exclude-glob storage/framework/views/ \
-              --exclude-glob storage/logs/ \
-              --exclude-glob storage/app/public/ \
-              --exclude-glob public/storage/ \
-              --exclude-glob .env* \
-              --exclude-glob tests/ \
-              --exclude-glob *.log \
-              . $SERVER_PATH;
-            put /tmp/_runner.php -o ${SERVER_PATH}public/_runner.php;
-            quit
-          "
+          ftp_deploy() {
+            lftp -e "
+              set ftp:ssl-force true;
+              set ftp:passive-mode true;
+              set ssl:verify-certificate no;
+              set net:timeout 45;
+              set net:max-retries 3;
+              set net:reconnect-interval-base 15;
+              set net:reconnect-interval-multiplier 2;
+              open -u $FTP_USER,$FTP_PASS $FTP_HOST;
+              mirror --reverse --no-perms --parallel=3 \
+                --exclude-glob .git* \
+                --exclude-glob node_modules/ \
+                --exclude-glob vendor/ \
+                --exclude-glob storage/framework/cache/ \
+                --exclude-glob storage/framework/sessions/ \
+                --exclude-glob storage/framework/views/ \
+                --exclude-glob storage/logs/ \
+                --exclude-glob storage/app/public/ \
+                --exclude-glob public/storage/ \
+                --exclude-glob .env* \
+                --exclude-glob tests/ \
+                --exclude-glob *.log \
+                . $SERVER_PATH;
+              put /tmp/_runner.php -o ${SERVER_PATH}public/_runner.php;
+              quit
+            "
+          }
+
+          for attempt in 1 2 3; do
+            echo "=== Intento FTP #${attempt} ==="
+            if ftp_deploy; then
+              echo "FTP OK en intento #${attempt}"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "Fallo — esperando 45s antes de reintentar..."
+              sleep 45
+            else
+              echo "Los 3 intentos fallaron."
+              exit 1
+            fi
+          done
 
           echo "Ejecutando artisan en servidor..."
           curl -f \
