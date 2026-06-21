@@ -10,28 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, bcmath, pdo, pdo_mysql
 
       - name: Build assets
         run: npm ci && npm run build
 
-      - name: Deploy via lftp
+      - name: Deploy via lftp + artisan hook
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASSWORD }}
           SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
           sudo apt-get install -q -y lftp
+
+          HOOK_TOKEN=$(openssl rand -hex 32)
+          sed "s/__HOOK_TOKEN__/${HOOK_TOKEN}/" .github/deploy-runner.php > /tmp/_runner.php
+
           lftp -e "
             set ftp:ssl-force true;
             set ssl:verify-certificate no;
@@ -53,20 +51,15 @@ jobs:
               --exclude-glob .env* \
               --exclude-glob tests/ \
               --exclude-glob *.log \
-              --exclude-glob deploy-hook.php \
               . $SERVER_PATH;
+            put /tmp/_runner.php -o ${SERVER_PATH}public/_runner.php;
             quit
           "
 
-      - name: Post-deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ${{ secrets.SSH_APP_PATH }}
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php artisan optimize:clear
-            php artisan migrate --force
+          echo "Ejecutando artisan en servidor..."
+          curl -f \
+            -H "X-Deploy-Token: ${HOOK_TOKEN}" \
+            --max-time 180 \
+            --retry 2 \
+            --retry-delay 5 \
+            "${APP_URL}/_runner.php"
