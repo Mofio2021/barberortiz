@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\FidelizacionController;
 use App\Http\Controllers\TicketController;
 use App\Models\Branch;
 use App\Models\Service;
@@ -31,6 +32,13 @@ Route::get('/', function () {
 });
 
 Route::get('/login', fn() => redirect()->route('filament.admin.auth.login'))->name('login');
+
+// Club VIP — página pública de fidelización
+Route::get('/fidelizacion', [FidelizacionController::class, 'index'])->name('fidelizacion');
+Route::middleware('throttle:20,1')->group(function () {
+    Route::post('/fidelizacion/buscar',    [FidelizacionController::class, 'buscar']);
+    Route::post('/fidelizacion/registrar', [FidelizacionController::class, 'registrar']);
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/ticket/venta/{sale}',         [TicketController::class, 'venta'])->name('ticket.venta');

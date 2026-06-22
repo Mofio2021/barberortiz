@@ -48,6 +48,11 @@ class CustomerResource extends Resource
                         ->unique(ignoreRecord: true)
                         ->maxLength(20),
 
+                    Forms\Components\TextInput::make('ci')
+                        ->label('Carnet de identidad')
+                        ->nullable()
+                        ->maxLength(20),
+
                     Forms\Components\TextInput::make('email')
                         ->label('Correo electrónico')
                         ->email()
