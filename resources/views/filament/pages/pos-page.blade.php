@@ -447,6 +447,42 @@
                 </p>
             @endif
 
+            {{-- Badge tipo de cliente (solo si tiene tipo asignado) --}}
+            @if($customerId && $customerTypeName)
+            @php
+                $typeBg     = match($customerTypeColor) {
+                    'amber'  => '#fef3c7', 'purple' => '#f3e8ff', 'blue' => '#dbeafe',
+                    'green'  => '#d1fae5', 'red'    => '#fee2e2', default => '#f3f4f6',
+                };
+                $typeText   = match($customerTypeColor) {
+                    'amber'  => '#92400e', 'purple' => '#6b21a8', 'blue' => '#1e40af',
+                    'green'  => '#065f46', 'red'    => '#991b1b', default => '#374151',
+                };
+                $typeBorder = match($customerTypeColor) {
+                    'amber'  => '#f59e0b', 'purple' => '#a855f7', 'blue' => '#3b82f6',
+                    'green'  => '#10b981', 'red'    => '#ef4444', default => '#9ca3af',
+                };
+            @endphp
+            <div style="margin-top:.625rem;border-radius:.625rem;padding:.5rem .75rem;
+                        border:2px solid {{ $typeBorder }};background:{{ $typeBg }};
+                        display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+                <div>
+                    <span style="font-size:.82rem;font-weight:700;color:{{ $typeText }};">
+                        {{ $customerTypeName }}
+                    </span>
+                    @if($customerTypeDiscount > 0)
+                        <span style="font-size:.72rem;color:{{ $typeText }};margin-left:.25rem;">
+                            — {{ $customerTypeDiscount }}% desc.
+                        </span>
+                    @endif
+                </div>
+                <span style="font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:.375rem;white-space:nowrap;
+                             background:{{ $customerTypeCostBearer === 'business' ? '#1d4ed8' : '#dc2626' }};color:#fff;">
+                    {{ $customerTypeCostBearer === 'business' ? 'Costo: negocio' : 'Costo: barbero' }}
+                </span>
+            </div>
+            @endif
+
             {{-- Tarjeta de fidelidad (solo si el cliente está identificado) --}}
             @if($customerId && $customerPhone)
                 <div style="margin-top:.75rem;border-radius:.625rem;padding:.625rem .75rem;
@@ -531,13 +567,25 @@
                         <span>Subtotal:</span>
                         <span>Bs {{ number_format($subtotal, 2) }}</span>
                     </div>
-                    {{-- Descuento: oculto para barbero (no pueden aplicar descuentos) --}}
-                    @if(!$isBarbero)
+                    {{-- Descuento: auto desde tipo de cliente (read-only) o manual para cajero --}}
+                    @if(!$isBarbero || $customerTypeDiscount > 0)
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-300">Descuento:</span>
-                        <input wire:model.live="discount" type="number" min="0" step="0.5"
-                            class="w-24 text-right px-2 py-1 text-sm border rounded-lg dark:bg-gray-700
-                                   dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-amber-400"/>
+                        <span class="text-gray-600 dark:text-gray-300">
+                            @if($customerTypeDiscount > 0)
+                                Desc. ({{ $customerTypeName }}):
+                            @else
+                                Descuento:
+                            @endif
+                        </span>
+                        @if($customerTypeDiscount > 0)
+                            <span style="color:#ef4444;font-weight:600;">
+                                &minus; Bs {{ number_format($discount, 2) }}
+                            </span>
+                        @else
+                            <input wire:model.live="discount" type="number" min="0" step="0.5"
+                                class="w-24 text-right px-2 py-1 text-sm border rounded-lg dark:bg-gray-700
+                                       dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-amber-400"/>
+                        @endif
                     </div>
                     @endif
                     <div class="flex justify-between font-bold text-xl text-gray-900 dark:text-white pt-1">
@@ -546,7 +594,14 @@
                     </div>
                     <div class="flex justify-between text-xs text-gray-400">
                         <span>Comision barbero:</span>
-                        <span>Bs {{ number_format($totalCommission, 2) }}</span>
+                        <span>
+                            Bs {{ number_format($totalCommission, 2) }}
+                            @if($customerTypeCostBearer === 'barber' && $customerTypeDiscount > 0)
+                                <span style="color:#f87171;">&nbsp;(−{{ $customerTypeDiscount }}%)</span>
+                            @elseif($customerTypeCostBearer === 'business' && $customerTypeDiscount > 0)
+                                <span style="color:#34d399;">&nbsp;(neg. asume)</span>
+                            @endif
+                        </span>
                     </div>
                 </div>
             @endif

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\Expense;
+use App\Models\CustomerType;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Product;
@@ -73,6 +74,14 @@ class PosPage extends Page
     public bool   $customerIsBirthday   = false;
     public bool   $showRedeemModal      = false;
     public ?int   $selectedRewardId     = null;
+
+    // ── Tipo de cliente ──────────────────────────────────────────
+    public ?int   $customerTypeId             = null;
+    public string $customerTypeName           = '';
+    public string $customerTypeColor          = 'amber';
+    public int    $customerTypeDiscount       = 0;    // 0-100
+    public string $customerTypeCostBearer     = '';   // business | barber
+    public bool   $customerTypeAffectsLoyalty = true;
 
     // ── Egreso rápido ───────────────────────────────────────────
     public bool   $showExpenseModal     = false;
@@ -331,28 +340,68 @@ class PosPage extends Page
 
     public function recalculate(): void
     {
-        $this->subtotal        = collect($this->cartItems)->sum(fn ($i) => $i['price'] * $i['quantity']);
-        // Barbero no aplica descuentos
-        if ($this->isBarbero) $this->discount = 0;
-        $this->total           = max(0, $this->subtotal - $this->discount);
-        $this->totalCommission = collect($this->cartItems)->sum(fn ($i) => $i['commission']);
-        $this->change          = max(0, $this->amountPaid - $this->total);
+        $this->subtotal = collect($this->cartItems)->sum(fn ($i) => $i['price'] * $i['quantity']);
+
+        // Auto-descuento por tipo de cliente (prioridad sobre descuento manual)
+        if ($this->customerTypeDiscount > 0) {
+            $this->discount = round($this->subtotal * $this->customerTypeDiscount / 100, 2);
+        } elseif ($this->isBarbero) {
+            $this->discount = 0;
+        }
+
+        $this->total       = max(0, $this->subtotal - $this->discount);
+        $rawCommission     = collect($this->cartItems)->sum(fn ($i) => $i['commission']);
+
+        // Si el barbero asume el costo, su comisión baja proporcionalmente al descuento
+        if ($this->customerTypeCostBearer === 'barber' && $this->customerTypeDiscount > 0) {
+            $this->totalCommission = round($rawCommission * (1 - $this->customerTypeDiscount / 100), 2);
+        } else {
+            $this->totalCommission = $rawCommission;
+        }
+
+        $this->change = max(0, $this->amountPaid - $this->total);
     }
 
     public function lookupCustomer(): void
     {
         if (strlen($this->customerPhone) < 6) return;
 
-        $customer = Customer::where('phone', $this->customerPhone)->first();
+        // Limpiar tipo antes de cargar el nuevo cliente
+        $this->customerTypeId             = null;
+        $this->customerTypeName           = '';
+        $this->customerTypeColor          = 'amber';
+        $this->customerTypeDiscount       = 0;
+        $this->customerTypeCostBearer     = '';
+        $this->customerTypeAffectsLoyalty = true;
+
+        $customer = Customer::where('phone', $this->customerPhone)->with('customerType')->first();
         if ($customer) {
             $this->customerName          = $customer->name;
             $this->customerId            = $customer->id;
             $this->customerLoyaltyPoints = (int) $customer->loyalty_points;
             $this->customerIsBirthday    = $customer->isBirthday();
 
+            if ($customer->customerType?->is_active) {
+                $type = $customer->customerType;
+                $this->customerTypeId             = $type->id;
+                $this->customerTypeName           = $type->name;
+                $this->customerTypeColor          = $type->color;
+                $this->customerTypeDiscount       = $type->discount_percentage;
+                $this->customerTypeCostBearer     = $type->cost_bearer;
+                $this->customerTypeAffectsLoyalty = $type->affects_loyalty;
+            }
+
+            // Recalcular para aplicar el descuento automático si corresponde
+            $this->recalculate();
+
             $body = "Visitas: {$customer->total_visits} · Puntos: {$customer->loyalty_points}";
             if ($this->customerIsBirthday) {
                 $body .= ' · 🎂 ¡Hoy es su cumpleaños!';
+            }
+            if ($this->customerTypeName) {
+                $body .= $this->customerTypeDiscount > 0
+                    ? " · {$this->customerTypeName} ({$this->customerTypeDiscount}% desc.)"
+                    : " · {$this->customerTypeName}";
             }
 
             Notification::make()
@@ -443,8 +492,8 @@ class PosPage extends Page
             return;
         }
 
-        // Comprobante QR obligatorio
-        if ($this->paymentMethod === 'qr' && ! $this->qrReceipt) {
+        // Comprobante QR obligatorio (excepto si el total es 0)
+        if ($this->paymentMethod === 'qr' && ! $this->qrReceipt && $this->total > 0) {
             Notification::make()
                 ->title('Comprobante QR obligatorio')
                 ->body('Adjunta la foto del comprobante para continuar.')
@@ -491,10 +540,12 @@ class PosPage extends Page
                 'branch_id'        => $this->selectedBranchId,
                 'user_id'          => Auth::id(),   // columna legada NOT NULL
                 'customer_id'      => $customer->id,
+                'customer_type_id' => $this->customerTypeId,
+                'cost_bearer'      => $this->customerTypeCostBearer ?: null,
                 'staff_id'         => $this->selectedStaffId,
                 'cashier_id'       => Auth::id(),
                 'subtotal'         => $this->subtotal,
-                'discount'         => $this->isBarbero ? 0 : $this->discount,
+                'discount'         => $this->discount,
                 'total'            => $this->total,
                 'total_commission' => $this->totalCommission,
                 'payment_method'   => $this->paymentMethod,
@@ -524,9 +575,8 @@ class PosPage extends Page
                 }
             }
 
-            // Sumar 1 punto de fidelidad si la venta incluye al menos un servicio
-            // y el cliente es identificado (no el cliente general sin teléfono)
-            if ($hasService && $this->customerId && $this->customerPhone) {
+            // Sumar 1 punto de fidelidad si aplica (el tipo puede desactivarlo)
+            if ($hasService && $this->customerId && $this->customerPhone && $this->customerTypeAffectsLoyalty) {
                 $customer?->increment('loyalty_points');
                 $this->customerLoyaltyPoints = (int) ($this->customerLoyaltyPoints + 1);
             }
@@ -594,6 +644,12 @@ class PosPage extends Page
         $this->customerIsBirthday    = false;
         $this->showRedeemModal       = false;
         $this->selectedRewardId      = null;
+        $this->customerTypeId             = null;
+        $this->customerTypeName           = '';
+        $this->customerTypeColor          = 'amber';
+        $this->customerTypeDiscount       = 0;
+        $this->customerTypeCostBearer     = '';
+        $this->customerTypeAffectsLoyalty = true;
         $this->paymentMethod         = 'cash';
         $this->amountPaid            = 0;
         $this->discount              = 0;

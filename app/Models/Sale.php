@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 class Sale extends Model {
     // user_id = columna legada NOT NULL del esquema original; equivalente a cashier_id
-    protected $fillable = ['branch_id','user_id','customer_id','staff_id','cashier_id','subtotal','discount','total','total_commission','payment_method','amount_paid','change_given','notes','qr_receipt_path'];
+    protected $fillable = ['branch_id','user_id','customer_id','customer_type_id','cost_bearer','staff_id','cashier_id','subtotal','discount','total','total_commission','payment_method','amount_paid','change_given','notes','qr_receipt_path'];
     protected $casts = ['total'=>'decimal:2','subtotal'=>'decimal:2'];
     public function branch(): BelongsTo { return $this->belongsTo(Branch::class); }
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }

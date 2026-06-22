@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerResource\Pages;
 use App\Models\Customer;
+use App\Models\CustomerType;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -64,6 +65,18 @@ class CustomerResource extends Resource
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
+
+            Forms\Components\Section::make('Tipo especial')
+                ->schema([
+                    Forms\Components\Select::make('customer_type_id')
+                        ->label('Tipo de cliente')
+                        ->options(fn () => CustomerType::active()->pluck('name', 'id'))
+                        ->nullable()
+                        ->placeholder('Cliente regular (sin tipo especial)')
+                        ->helperText('Asigna un tipo especial para aplicar descuento automático en el POS.')
+                        ->visible(fn () => auth()->user()?->hasAnyRole(['super_admin', 'admin_sucursal'])),
+                ])
+                ->visible(fn () => auth()->user()?->hasAnyRole(['super_admin', 'admin_sucursal'])),
         ]);
     }
 
@@ -82,6 +95,13 @@ class CustomerResource extends Resource
                     ->label('Correo')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('customerType.name')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color('warning')
+                    ->default('Regular')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('total_visits')
                     ->label('Visitas')
