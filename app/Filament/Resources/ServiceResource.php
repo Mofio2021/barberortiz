@@ -67,6 +67,22 @@ class ServiceResource extends Resource
                 ->visible($isSuperAdmin)
                 ->columns(1),
 
+            Forms\Components\Section::make('Foto del servicio')
+                ->schema([
+                    Forms\Components\FileUpload::make('image_path')
+                        ->label('Foto')
+                        ->image()
+                        ->disk('public')
+                        ->directory('services')
+                        ->imageResizeMode('cover')
+                        ->imageCropAspectRatio('4:3')
+                        ->imageResizeTargetWidth('800')
+                        ->imageResizeTargetHeight('600')
+                        ->nullable()
+                        ->helperText('Aparece en la página web. Formato 4:3 recomendado (ej. 800×600). Si no subís foto se usa la imagen predeterminada del servicio.'),
+                ])
+                ->columns(1),
+
             Forms\Components\Section::make('Datos del servicio')
                 ->schema([
                     Forms\Components\Select::make('category_id')
@@ -124,6 +140,19 @@ class ServiceResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image_path')
+                    ->label('Foto')
+                    ->disk('public')
+                    ->square()
+                    ->defaultImageUrl(fn (Service $r) => asset('images/services/' . strtolower(
+                        str_contains(strtolower($r->name), 'barba') && str_contains(strtolower($r->name), 'corte') ? 'corte-barba' :
+                        (str_contains(strtolower($r->name), 'tinte')  ? 'tinte'  :
+                        (str_contains(strtolower($r->name), 'lavado') ? 'lavado' :
+                        (str_contains(strtolower($r->name), 'base')   ? 'base'   :
+                        (str_contains(strtolower($r->name), 'corte')  ? 'corte'  :
+                        (str_contains(strtolower($r->name), 'barba')  ? 'barba'  : 'corte')))))
+                    ) . '.jpg')),
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Servicio')
                     ->searchable()

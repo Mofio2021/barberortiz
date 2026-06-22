@@ -253,8 +253,9 @@ function branchApp() {
             'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
         ],
 
-        getServiceImage(name) {
-            const n = name.toLowerCase();
+        getServiceImage(service) {
+            if (service.image_url) return service.image_url;
+            const n = service.name.toLowerCase();
             if (n.includes('tinte'))  return '/images/services/tinte.jpg';
             if (n.includes('lavado')) return '/images/services/lavado.jpg';
             if (n.includes('base'))   return '/images/services/base.jpg';
@@ -458,15 +459,15 @@ function branchApp() {
             <template x-for="(service, index) in currentServices" :key="service.id">
                 <div class="card-dark rounded-lg overflow-hidden text-center flex flex-col">
 
-                    <template x-if="getServiceImage(service.name)">
+                    <template x-if="getServiceImage(service)">
                         <div class="h-44 overflow-hidden flex-shrink-0">
-                            <img :src="getServiceImage(service.name)"
+                            <img :src="getServiceImage(service)"
                                  :alt="service.name"
                                  class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
                         </div>
                     </template>
 
-                    <template x-if="!getServiceImage(service.name)">
+                    <template x-if="!getServiceImage(service)">
                         <div class="pt-8 pb-2">
                             <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center"
                                  style="background: rgba(201,168,76,0.1)">

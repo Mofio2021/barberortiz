@@ -18,6 +18,7 @@ class Service extends Model
         'commission_type',
         'commission_value',
         'is_active',
+        'image_path',
     ];
 
     protected $casts = [

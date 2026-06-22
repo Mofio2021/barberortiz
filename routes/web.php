@@ -25,6 +25,7 @@ Route::get('/', function () {
                 'name'        => $s->name,
                 'description' => $s->description,
                 'price'       => $s->price,
+                'image_url'   => $s->image_path ? asset('storage/' . $s->image_path) : null,
             ])->values()]
     );
 
